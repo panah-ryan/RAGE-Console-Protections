@@ -363,3 +363,7 @@ MigrationBackup/
 FodyWeavers.xsd
 /xkelib
 /xkelib
+/xkelib
+/xkelib/kernel/console_type.h
+/xkelib/xkelib.vcxproj
+/xkelib/xkelib.vcxproj.filters

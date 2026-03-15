@@ -55,7 +55,7 @@ PED_MODELS ped_blacklist_models[] = { PED_PLAYER, PED_SUPERLOD, PED_CS_ANDREI, P
 std::vector<PED_MODELS> ped_blacklist;
 std::vector<uint32_t> object_blacklist;
 
-struct clone_queue
+struct clone_queue //Experimental should be tested or removed
 {
 	CMessage message;
 	NetworkObjectType objectType;

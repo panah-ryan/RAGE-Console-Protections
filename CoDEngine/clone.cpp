@@ -110,7 +110,7 @@ void CNetworkObjectMgr_ProcessCloneCreateData(CNetworkObjectMgr* netObjMgr, uint
 
 		switch (objectType)
 		{
-		case NET_OBJ_TYPE_PLAYER:
+		case NET_OBJ_TYPE_PLAYER: //Need to peek if player_index is invalid or ours, if so change it to a valid one and let them spawn. Prevents weird bugs from happening later down the line.
 		{
 			int player_index = static_cast<int>(message->PeekInt(5, seek_bits));
 			uint32_t model_hash = message->PeekInt(32, seek_bits + 5);

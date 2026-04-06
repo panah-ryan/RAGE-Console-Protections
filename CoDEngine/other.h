@@ -56,8 +56,8 @@ struct netComplaintMsg
 	int m_NumComplainees;
 };
 
-extern Detour<void> netPeerMgr_HandleGetReadyToStartPlaying_detour;
-void netPeerMgr_HandleGetReadyToStartPlaying(void* netPeerMgr, netEvent* evt);
+extern Detour<void> CNetworkPeerMgr_HandleGetReadyToStartPlaying_detour;
+void CNetworkPeerMgr_HandleGetReadyToStartPlaying(void* netPeerMgr, netEvent* evt);
 
 extern Detour<bool> CMsgPeerData_Import_detour;
 bool CMsgPeerData_Import(peerDataMsg* msg, uint32_t key, char* buffer, size_t size, int* count);
@@ -74,8 +74,8 @@ bool CMsgReassignResponse_Import(reassignResponseMsg* msg, uint32_t key, char* b
 extern Detour<bool> netComplaintMsg_Import_detour;
 bool netComplaintMsg_Import(netComplaintMsg* msg, uint32_t key, char* buffer, size_t size, int* count);
 
-extern Detour<bool> CNetworkPlayerMgr_AddTemporaryPlayer_detour;
-bool CNetworkPlayerMgr_AddTemporaryPlayer(void* mgr, CPlayerInfo* info, void* endpoint, peerDataMsg* data, int player_status);
+extern Detour<bool> CNetworkPeerMgr_AddRemotePeer_detour;
+bool CNetworkPeerMgr_AddRemotePeer(void* mgr, CPlayerInfo* info, void* endpoint, peerDataMsg* data, int player_status);
 
 extern Detour<bool> CMsgPeerData_Export_detour;
 bool CMsgPeerData_Export(peerDataMsg* msg, uint32_t key, char* buffer, size_t size, int* count);

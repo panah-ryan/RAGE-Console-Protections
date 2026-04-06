@@ -26,7 +26,7 @@ public:
 	int _0x28[2];
 	int _0x30[2];
 	int _0x38[2];
-	CMessage _0x40;
+	CMessageBuffer _0x40;
 	char _0x60[0x5F];
 	bool m_ShouldSkipMessage; //custom variable this location is unused so we should be able to use it
 
@@ -36,29 +36,29 @@ public:
 	}
 
 	virtual ~networkArrayHandler();
-	virtual void call1();
-	virtual void call2();
+	virtual void Init();
+	virtual void Shutdown();
 	virtual void call3();
-	virtual void call4();
-	virtual void call5();
-	virtual void call6();
+	virtual void PeerHasJoined();
+	virtual void PeerHasLeft();
+	virtual void NewHost();
 	virtual const char* GetHandlerName();
 	virtual int GetSizeOfElementIndex();
 	virtual void call7();
 	virtual int GetElementIndex(int index, int peer);
-	virtual void call8();
-	virtual void call9();
-	virtual void call10();
-	virtual bool CanApplyElementData(int index, int peer, bool empty);
-	virtual void call11();
+	virtual void SetElementAuthority();
+	virtual void ClearElementAuthority();
+	virtual void SetElementDirty();
+	virtual bool DoesPeerHaveAuthorityOverThisElement(int index, int peer, bool empty);
+	virtual void IsReadyToSync();
 	virtual void call12();
 	virtual void call13();
 	virtual void call14();
-	virtual bool WriteUpdate(CMessage* buffer, int index);
-	virtual bool ReadUpdate(CMessage* buffer, int index);
-	virtual void call15();
-	virtual void SkipUpdate(CMessage* buffer, int index);
-	virtual void LogElementData(bool r4, int index);
+	virtual bool WriteElement(CMessageBuffer* buffer, int index);
+	virtual bool ReadElement(CMessageBuffer* buffer, int index);
+	virtual void CompareElement();
+	virtual void SkipElement(CMessageBuffer* buffer, int index);
+	virtual void WriteToLogFile(bool r4, int index);
 };
 
 class CPlayerInfoArrayHandler : public networkArrayHandler
@@ -109,7 +109,7 @@ struct CDispatchInfo //0x50
 	__vector4 m_Position; //0x20
 	char _0x30[0x20];
 
-	CPed* GetPedDispatch()
+	CPed* GetPed()
 	{
 		return ((CPed*(*)(CDispatchInfo*))0x8215BA78)(this);
 	}
@@ -123,11 +123,11 @@ public:
 };
 
 int CNetworkArrayHandler_GetElementIndex(networkArrayHandler* handler, int index, int peer);
-extern Detour<bool> CNetworkArrayHandler_CanApplyElementData_detour;
-bool CNetworkArrayHandler_CanApplyElementData(networkArrayHandler* handler, int index, int peer, bool empty);
-extern Detour<bool> CPedGroupsArrayHandler_CanApplyElementData_detour;
-bool CPedGroupsArrayHandler_CanApplyElement(CPedGroupsArrayHandler* handler, int index, int peer, bool empty);
-extern Detour<bool> CPedGroupsArrayHandler_ReadUpdate_detour;
-bool CPedGroupsArrayHandler_ReadUpdate(CPedGroupsArrayHandler* handler, CMessage* buffer, int index);
-extern Detour<bool> CScriptClientVariablesArrayHandler_ReadUpdate_detour;
-bool CScriptClientVariablesArrayHandler_ReadUpdate(CScriptVariablesArrayHandler* handler, CMessage* message, int index);
+extern Detour<bool> CNetworkArrayHandler_DoesPeerHaveAuthorityOverThisElement_detour;
+bool CNetworkArrayHandler_DoesPeerHaveAuthorityOverThisElement(networkArrayHandler* handler, int index, int peer, bool empty);
+extern Detour<bool> CPedGroupsArrayHandler_DoesPeerHaveAuthorityOverThisElement_detour;
+bool CPedGroupsArrayHandler_DoesPeerHaveAuthorityOverThisElement(CPedGroupsArrayHandler* handler, int index, int peer, bool empty);
+extern Detour<bool> CPedGroupsArrayHandler_ReadElement_detour;
+bool CPedGroupsArrayHandler_ReadElement(CPedGroupsArrayHandler* handler, CMessageBuffer* buffer, int index);
+extern Detour<bool> CScriptClientVariablesArrayHandler_ReadElement_detour;
+bool CScriptClientVariablesArrayHandler_ReadElement(CScriptVariablesArrayHandler* handler, CMessageBuffer* message, int index);

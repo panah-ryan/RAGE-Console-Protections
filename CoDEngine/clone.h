@@ -6,10 +6,10 @@
 void setup_blacklists();
 
 extern Detour<void> CNetworkObjectMgr_ProcessCloneCreateData_detour;
-void CNetworkObjectMgr_ProcessCloneCreateData(CNetworkObjectMgr* netObjMgr, uint8_t peer, NetworkObjectType objectType, short objectID, uint8_t objectFlags, CMessage* message);
+void CNetworkObjectMgr_ProcessCloneCreateData(CNetworkObjectMgr* netObjMgr, uint8_t peer, eNetworkObjectType objectType, short objectID, uint8_t objectFlags, CMessageBuffer* message);
 
-extern Detour<bool> CNetObjHeli_SerializeCloneData_detour;
-bool CNetObjHeli_SerializeCloneData(CNetworkObject* net_heli, CMessage* message);
+extern Detour<bool> CNetObjHeli_CreateClone_detour;
+bool CNetObjHeli_CreateClone(CNetworkObject* net_heli, CMessageBuffer* message);
 
-extern Detour<void> netObjectMgrBase_Update_detour;
-void netObjectMgrBase_Update(CNetworkObjectMgr* mgr, bool bUpdateNetworkObjects);
+extern Detour<void> CNetworkObjectMgr_Update_detour;
+void CNetworkObjectMgr_Update(CNetworkObjectMgr* mgr, bool bUpdateNetworkObjects);

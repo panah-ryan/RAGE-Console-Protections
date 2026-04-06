@@ -55,15 +55,15 @@ PED_MODELS ped_blacklist_models[] = { PED_PLAYER, PED_SUPERLOD, PED_CS_ANDREI, P
 std::vector<PED_MODELS> ped_blacklist;
 std::vector<uint32_t> object_blacklist;
 
-struct clone_queue //Experimental should be tested or removed
+struct clone_queue
 {
-	CMessage message;
-	NetworkObjectType objectType;
+	CMessageBuffer message;
+	eNetworkObjectType objectType;
 	uint8_t peer;
 	short objectID;
 	uint8_t objectFlags;
 
-	clone_queue(NetworkObjectType objectType, uint8_t peer, short objectID, uint8_t objectFlags, uint8_t* buffer, int bits)
+	clone_queue(eNetworkObjectType objectType, uint8_t peer, short objectID, uint8_t objectFlags, uint8_t* buffer, int bits)
 		: objectType(objectType), peer(peer), objectID(objectID), objectFlags(objectFlags)
 	{
 		message.Setup(buffer, bits << 3, 0, true);
@@ -78,13 +78,13 @@ void setup_blacklists()
 		ped_blacklist.push_back(ped_blacklist_models[i]);
 }
 
-inline bool IsVehicleObjectType(NetworkObjectType type)
+inline bool IsVehicleObjectType(eNetworkObjectType type)
 {
 	return type > NET_OBJ_TYPE_DUMMY_PED && type != NET_OBJ_TYPE_OBJECT;
 }
 
 Detour<void> CNetworkObjectMgr_ProcessCloneCreateData_detour;
-void CNetworkObjectMgr_ProcessCloneCreateData(CNetworkObjectMgr* netObjMgr, uint8_t peer, NetworkObjectType objectType, short objectID, uint8_t objectFlags, CMessage* message)
+void CNetworkObjectMgr_ProcessCloneCreateData(CNetworkObjectMgr* netObjMgr, uint8_t peer, eNetworkObjectType objectType, short objectID, uint8_t objectFlags, CMessageBuffer* message)
 {
 	bool should_we_create = false;
 	BOOL is_mission_object = (objectFlags & GLOBAL_FLAG_SCRIPT_OBJECT) >> 3;
@@ -110,14 +110,14 @@ void CNetworkObjectMgr_ProcessCloneCreateData(CNetworkObjectMgr* netObjMgr, uint
 
 		switch (objectType)
 		{
-		case NET_OBJ_TYPE_PLAYER: //Need to peek if player_index is invalid or ours, if so change it to a valid one and let them spawn. Prevents weird bugs from happening later down the line.
+		case NET_OBJ_TYPE_PLAYER:
 		{
 			int player_index = static_cast<int>(message->PeekInt(5, seek_bits));
 			uint32_t model_hash = message->PeekInt(32, seek_bits + 5);
 
-			if (!NetworkInterface::GetPlayerInfo(peer)->GetPlayerPed() //Check if they already have a ped (duplicate ped)
+			if (!CNetwork::GetPlayerInfo(peer)->GetPlayerPed() //Check if they already have a ped (duplicate ped)
 				&& player_index < 16 && player_index >= 0 //Check if index they are trying to take is valid
-				&& player_index != NetworkInterface::GetLocalPlayer()->GetPeerID()) //Check if they are trying to take our index
+				&& player_index != CNetwork::GetMyPeer()->GetPeerID()) //Check if they are trying to take our index
 				should_we_create = true;
 
 			if (model_hash == NULL || (model_hash != PED_M_Y_MULTIPLAYER && model_hash != PED_F_Y_MULTIPLAYER)) //They are trying to spawn not as default multiplayer model, lets fix that
@@ -128,7 +128,6 @@ void CNetworkObjectMgr_ProcessCloneCreateData(CNetworkObjectMgr* netObjMgr, uint
 		case NET_OBJ_TYPE_PED:
 		{
 			uint32_t model_hash = message->PeekInt(32, seek_bits + 2);
-			uint32_t prop_hash = NULL;
 			seek_bits += 2 + 32 + 16;
 
 			if (is_mission_object) //Read extra data for mission objects
@@ -147,16 +146,14 @@ void CNetworkObjectMgr_ProcessCloneCreateData(CNetworkObjectMgr* netObjMgr, uint
 
 			break;
 		}
-		case NET_OBJ_TYPE_DUMMY_PED: //Basically same as regular PED
+		case NET_OBJ_TYPE_DUMMY_PED: //Same as above basically
 		{
 			uint32_t model_hash = message->PeekInt(32, seek_bits);
-			uint32_t prop_hash = NULL;
 
 			if (message->PeekBool(seek_bits + 32))
 				message->PokeInt(NULL, 32, seek_bits + 32 + 1);
 
-			if (model_hash != NULL && IS_THIS_MODEL_A_PED(model_hash) 
-				&& std::find(ped_blacklist.begin(), ped_blacklist.end(), model_hash) == ped_blacklist.end()) 
+			if (model_hash != NULL && IS_THIS_MODEL_A_PED(model_hash) && std::find(ped_blacklist.begin(), ped_blacklist.end(), model_hash) == ped_blacklist.end()) //Model is valid, is a ped, and doesn't exist in our blacklist
 				should_we_create = true;
 
 			break;
@@ -174,12 +171,13 @@ void CNetworkObjectMgr_ProcessCloneCreateData(CNetworkObjectMgr* netObjMgr, uint
 		{
 			eEntityOwnedBy owned_by = static_cast<eEntityOwnedBy>(message->PeekInt(3, seek_bits) + 1);
 
-			if (is_mission_object || owned_by == ENTITY_OWNEDBY_DEBUG || owned_by == ENTITY_OWNEDBY_SCRIPT) //This flag determines if we have a model in the packet
+			if (is_mission_object || owned_by == ENTITY_OWNEDBY_DEBUG || owned_by == ENTITY_OWNEDBY_SCRIPT)
 			{
 				uint32_t model_hash = message->PeekInt(32, seek_bits + 3);
 
-				if (model_hash != NULL && !IS_THIS_MODEL_A_PED(model_hash) //Verify its not a ped
-					&& std::find(object_blacklist.begin(), object_blacklist.end(), model_hash) == object_blacklist.end()) //Check if its in our black list
+				//check trains in object pool! Cars are OK..
+				if (model_hash != NULL && !IS_THIS_MODEL_A_PED(model_hash)
+					&& std::find(object_blacklist.begin(), object_blacklist.end(), model_hash) == object_blacklist.end()) //Can't check if model is an object so lets check its not ped or vehicle and isn't in our blacklist
 					should_we_create = true;
 			}
 			else
@@ -227,7 +225,7 @@ void CNetworkObjectMgr_ProcessCloneCreateData(CNetworkObjectMgr* netObjMgr, uint
 		{
 			uint32_t model_hash = message->PeekInt(32, seek_bits);
 
-			if (model_hash != NULL && IS_THIS_MODEL_A_VEHICLE(model_hash)) //Planes don't exist but we haven't come across any trouble some models
+			if (model_hash != NULL && IS_THIS_MODEL_A_VEHICLE(model_hash)) //Can't check if model is a plane (always returns false) so haven't found any issues if its any vehicle
 				should_we_create = true;
 
 			break;
@@ -237,17 +235,17 @@ void CNetworkObjectMgr_ProcessCloneCreateData(CNetworkObjectMgr* netObjMgr, uint
 		}
 	}
 
-	if (!should_we_create) //Blocking creation because of malicious intent
+	if (!should_we_create)
 	{
 		if (objectType < NET_OBJ_TYPE_COUNT && objectType >= NET_OBJ_TYPE_PLAYER)
-			printf("[Clone Create] - Prevented %s from spawning by player %s!\n", CNetworkObjectMgr::GetObjectTypeName(objectType, false), NetworkInterface::GetPlayerInfo(peer)->GetPlayerName());
+			printf("[Clone Create] - Prevented %s from spawning by player %s!\n", CNetworkObjectMgr::GetObjectTypeName(objectType, false), CNetwork::GetPlayerInfo(peer)->GetPlayerName());
 
-		return; //Causing a return means we don't ack and client who sent the data doesn't know what to do since we didn't ack (so they only send one create)
+		return;
 	}
 
 	if (IsVehicleObjectType(objectType) && clone_create_limiter.process()) //Lets only queue Vehicles and check if we exceeded our rate limiter
 	{
-		uint8_t* clone_buffer = new uint8_t[message->GetSize()]; //Allocate new buffer
+		uint8_t* clone_buffer = new uint8_t[message->GetSize()];
 
 		if (clone_buffer)
 		{
@@ -255,7 +253,6 @@ void CNetworkObjectMgr_ProcessCloneCreateData(CNetworkObjectMgr* netObjMgr, uint
 			if(clone_create_limiter.exceeded_last_process())
 				printf("[Clone Create] - Rate Limiter has kicked in!\n");
 
-			clone_create_queue.push_back(clone); //Add clone to the queue
 			return; //Add to the queue and then return so we don't ack it
 		}
 	}
@@ -263,15 +260,15 @@ void CNetworkObjectMgr_ProcessCloneCreateData(CNetworkObjectMgr* netObjMgr, uint
 	CNetworkObjectMgr_ProcessCloneCreateData_detour.CallOriginal(netObjMgr, peer, objectType, objectID, objectFlags, message); //Continue original code since its safe to spawn
 }
 
-Detour<bool> CNetObjHeli_SerializeCloneData_detour;
-bool CNetObjHeli_SerializeCloneData(CNetworkObject* net_heli, CMessage* message)
+Detour<bool> CNetObjHeli_CreateClone_detour;
+bool CNetObjHeli_CreateClone(CNetworkObject* net_heli, CMessageBuffer* message)
 {
-	bool ret = CNetObjHeli_SerializeCloneData_detour.CallOriginal(net_heli, message); //Run original reading we will just modify what got set
+	bool ret = CNetObjHeli_CreateClone_detour.CallOriginal(net_heli, message);
 
 	if (ret)
 	{
 		CHeli* heli = net_heli->GetBaseHeli();
-		if (heli && heli->m_PlayerIndexSpotlight < -1 || heli->m_PlayerIndexSpotlight > 15) //Invalid player spotlight index (don't think game actually uses this)
+		if (heli && heli->m_PlayerIndexSpotlight < -1 || heli->m_PlayerIndexSpotlight > 15)
 		{
 			printf("[Network Heli] - Corrected invalid player spot light crash!\n");
 			heli->m_PlayerIndexSpotlight = -1;
@@ -281,19 +278,19 @@ bool CNetObjHeli_SerializeCloneData(CNetworkObject* net_heli, CMessage* message)
 	return ret;
 }
 
-Detour<void> netObjectMgrBase_Update_detour;
-void netObjectMgrBase_Update(CNetworkObjectMgr* mgr, bool bUpdateNetworkObjects)
+Detour<void> CNetworkObjectMgr_Update_detour;
+void CNetworkObjectMgr_Update(CNetworkObjectMgr* mgr, bool bUpdateNetworkObjects)
 {
 	static uint32_t queue_tick = GetTickCount();
 
-	netObjectMgrBase_Update_detour.CallOriginal(mgr, bUpdateNetworkObjects); //Run original code
+	CNetworkObjectMgr_Update_detour.CallOriginal(mgr, bUpdateNetworkObjects); //Run original code
 
 	if (!clone_create_queue.empty() && (queue_tick + seconds_to_ms(2) < GetTickCount())) //Queue isn't empty and we waited 2 seconds lets process one
 	{
 		clone_queue q = clone_create_queue.back();
 		if (q.message.m_buffer.m_ReadBits != nullptr) //We have a valid message
 		{
-			printf("[Clone Queue] - Processing %s (%i) from %s\n", mgr->GetObjectTypeName(q.objectType, false), q.objectID, NetworkInterface::GetPlayerInfo(q.peer)->GetPlayerName());
+			printf("[Clone Queue] - Processing %s (%i) from %s\n", mgr->GetObjectTypeName(q.objectType, false), q.objectID, CNetwork::GetPlayerInfo(q.peer)->GetPlayerName());
 			mgr->ProcessCloneCreateData(q.peer, q.objectType, q.objectID, q.objectFlags, &q.message);
 			delete q.message.m_buffer.m_ReadBits; //Processed message lets delete it
 		}

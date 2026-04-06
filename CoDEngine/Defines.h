@@ -75,7 +75,7 @@ public:
 	}
 };
 
-enum WEAPON_TYPE : int
+enum eWeaponType : int
 {
 	WEAPON_UNARMED,
 	WEAPON_BASEBALLBAT,
@@ -137,38 +137,35 @@ enum WEAPON_TYPE : int
 	WEAPON_ANYWEAPON,
 };
 
-struct CWeaponInfo
+class CWeaponInfo
 {
+public:
 	char _0x00[0x20];
 	uint32_t m_AimFlags; //0x20
 	int _0x24;
 	int m_AnimationIndex; //0x28
+
+	static CWeaponInfo* GetWeaponInfo(eWeaponType weapon) { return ((CWeaponInfo*(*)(eWeaponType))0x82299AD0)(weapon); }
 };
 
-class CWeaponInfoManager
-{
-public:
-	static CWeaponInfo* GetInfo(WEAPON_TYPE weapon) { return ((CWeaponInfo*(*)(WEAPON_TYPE))0x82299AD0)(weapon); }
-};
-
-struct CWeaponItem
+struct CWeapon
 {
 	char _0x00[0x14];
-	WEAPON_TYPE m_WeaponIndex;
+	eWeaponType m_WeaponIndex;
 };
 
-class CPedInventory
+class CPedWeaponMgr
 {
 public:
 	int _0x00;
 
-	CWeaponItem* GetCurrentWeapon()
+	CWeapon* GetWeaponUsable()
 	{
-		return ((CWeaponItem*(*)(CPedInventory*))0x823D4D60)(this);
+		return ((CWeapon*(*)(CPedWeaponMgr*))0x823D4D60)(this);
 	}
 };
 
-enum NetworkObjectType : int
+enum eNetworkObjectType : int
 {
 	NET_OBJ_TYPE_PLAYER,
 	NET_OBJ_TYPE_PED,
@@ -296,7 +293,7 @@ public:
 	char _0x210[0x10];
 	CPlayerInfo* m_PlayerInfo; //0x220
 	char _0x224[0x5C];
-	CPedInventory m_Inventory; //0x280
+	CPedWeaponMgr m_Inventory; //0x280
 	char _0x284[0x7FC];
 	CEntity* m_Vehicle; //0xA80
 	char _0xA84[0x314];
@@ -311,7 +308,7 @@ public:
 	virtual void call_128();
 	virtual void call_12C();
 
-	CPedInventory* GetInventory()
+	CPedWeaponMgr* GetInventory()
 	{
 		return &m_Inventory;
 	}
@@ -353,14 +350,14 @@ public:
 	signed char m_PlayerIndexSpotlight; //0x1FEA
 };
 
-enum SYNC_SERIALIZE : int
+enum SyncType : int
 {
-	SERIALIZE_READ,
-	SERIALIZE_SKIP,
-	SERIALIZE_PEEK,
-	SERIALIZE_WRITE,
-	SERIALIZE_DEBUG,
-	SERUALIZE_UNKNOWN
+	SYNC_READ,
+	SYNC_SKIP,
+	SYNC_PEEK,
+	SYNC_WRITE,
+	SYNC_LOG,
+	SYNC_SIZE
 };
 
 enum eMessageTypes : unsigned int
@@ -618,7 +615,7 @@ struct datBitBuffer
 	}
 };
 
-class CMessage
+class CMessageBuffer
 {
 public:
 	datBitBuffer m_buffer;
@@ -634,7 +631,7 @@ public:
 		m_buffer.m_IsReadOnly = unpack;
 	}
 
-	virtual ~CMessage() 
+	virtual ~CMessageBuffer() 
 	{
 		if(m_buffer.m_ReadBits)
 			delete m_buffer.m_ReadBits;
@@ -701,7 +698,7 @@ public:
 		int save_source = m_buffer.m_BaseBitOffset;
 
 		m_buffer.m_BaseBitOffset = srcBitOffset;
-		((void(*)(CMessage*, float*, int))0x82707C28)(this, vec, bits);
+		((void(*)(CMessageBuffer*, float*, int))0x82707C28)(this, vec, bits);
 
 		m_buffer.m_CursorPos = save_cursor;
 		m_buffer.m_NumBitsRead = save_read;
@@ -719,12 +716,12 @@ public:
 #define GLOBAL_FLAG_NO_CLONE_FOR_ENEMIES 1 << 2
 #define GLOBAL_FLAG_SCRIPT_OBJECT 1 << 3
 
-class CNetGamePlayer;
+class CNetworkPeer;
 class CNetworkObject //0x98
 {
 public:
 	CEntity* m_BaseEntity;
-	NetworkObjectType m_Type; //8
+	eNetworkObjectType m_Type; //8
 	uint16_t m_NetID; //0x0C
 	bool m_IsClone;
 	uint8_t m_PlayerIndex; //0x0F
@@ -750,59 +747,59 @@ public:
 	virtual CHeli* GetBaseHeli();
 	virtual void call_38();
 	virtual void call_3C();
-	virtual void call_40();
-	virtual void call_44();
+	virtual void CreateNetBlender();
+	virtual void CreatePeerSyncData();
 	virtual void call_48();
-	virtual void call_4C();
-	virtual void call_50();
+	virtual void Update();
+	virtual void UpdateAfterPhysics();
 	virtual void call_54();
-	virtual void call_58();
-	virtual void call_5C();
+	virtual void ProcessControl();
+	virtual void CanClone();
 	virtual bool CanDelete();
-	virtual void call_64();
-	virtual void call_68();
-	virtual void call_6C();
+	virtual void CanPassControl();
+	virtual void CanAcceptControl();
+	virtual void CanBlend();
 	virtual void call_70();
 	virtual void ChangeOwner(uint8_t peer, bool force);
-	virtual void call_78();
-	virtual void call_7C();
+	virtual void NeedsReassigning();
+	virtual void CalcReassignPriority();
 	virtual void call_80();
-	virtual void call_84();
-	virtual void CleanupGameObject(bool bDestroyObject);
-	virtual void call_8C();
-	virtual void call_90();
-	virtual bool SerializeCloneData(CMessage* message);
-	virtual void call_98();
-	virtual void call_9C();
-	virtual void call_A0();
-	virtual uint32_t* DetermineSyncData(uint32_t* part_to_process, CNetworkObject* netObj, uint8_t peer);
-	virtual void call_A8();
-	virtual void call_AC();
-	virtual void call_B0();
-	virtual CNetworkObject* SerializeSyncData(uint32_t* processedParts, CNetworkObject* netObj, uint32_t parts_to_process, CMessage* message, SYNC_SERIALIZE type, uint8_t our_peer, bool unused);
-	virtual void call_B8();
-	virtual void call_BC();
-	virtual void call_C0();
+	virtual void PeerHasLeft();
+	virtual void CleanUpGameObject(bool bDestroyObject);
+	virtual void PrepareForCloning();
+	virtual void PrepareForClone();
+	virtual bool CreateClone(CMessageBuffer* message);
+	virtual void GetTotalSizeOfCreateData();
+	virtual void InitialiseSyncStates();
+	virtual void GetChangedStates();
+	virtual uint32_t* GetCreateSyncState(uint32_t* part_to_process, CNetworkObject* netObj, uint8_t peer);
+	virtual void GetUnusedSyncStates();
+	virtual void GetUnackedSyncStates();
+	virtual void PrepareSync();
+	virtual CNetworkObject* Sync(uint32_t* processedParts, CNetworkObject* netObj, uint32_t parts_to_process, CMessageBuffer* message, SyncType type, uint8_t our_peer, bool unused);
+	virtual void PrepareSyncMigrate();
+	virtual void SyncMigrate();
+	virtual void IsInScope();
 	virtual void call_C4();
 	virtual void call_C8();
-	virtual void call_CC();
-	virtual void call_D0();
+	virtual void GetTotalSizeOfSyncData();
+	virtual void WriteCreateToLogFile();
 	virtual void call_D4();
-	virtual void call_D8();
-	virtual void call_DC();
-	virtual void call_E0();
-	virtual void call_E4();
-	virtual void call_E8();
-	virtual void call_EC();
+	virtual void WriteSyncMigrateToLogFile();
+	virtual void DumpNetworkObjectInfo();
+	virtual void InitaliseDeltaBuffer();
+	virtual void GetDeltaBufferSize();
+	virtual void ManageDefaultUpdateLevel();
+	virtual void GetImportantSyncStates();
 	virtual void call_F0();
 	virtual void call_F4();
-	virtual void call_F8();
-	virtual void call_FC();
-	virtual bool GiveControl(CNetGamePlayer* to);
+	virtual void IsOnGround();
+	virtual void DisplayNetworkInfo();
+	virtual bool TryToPassControlProximity(CNetworkPeer* to);
 
-	CNetGamePlayer* GetPlayerOwner()
+	CNetworkPeer* GetPeerOwner()
 	{
-		return ((CNetGamePlayer*(*)(CNetworkObject*))0x82701F68)(this);
+		return ((CNetworkPeer*(*)(CNetworkObject*))0x82701F68)(this);
 	}
 
 	uint16_t GetNetworkID()
@@ -846,13 +843,12 @@ public:
 		((void(*)(CNetworkObject*, uint8_t, bool))0x82702D60)(this, peer, set);
 	}
 
-	NetworkObjectType GetObjectType()
+	eNetworkObjectType GetObjectType()
 	{
 		return m_Type;
 	}
 };
 
-class CNetGamePlayer;
 class CPlayerInfo
 {
 public:
@@ -869,7 +865,7 @@ public:
 	char _0x4CF;
 	int m_State; //0x4D0
 	char _0x4D4[0x8C];
-	CNetGamePlayer* m_NetPlayer; //0x560
+	CNetworkPeer* m_NetPlayer; //0x560
 	char _0x564[0x14];
 	CPlayerPed* m_PlayerPed; //0x578
 
@@ -891,7 +887,7 @@ public:
 };
 
 #define INVALID_PLAYER_INDEX 0xFF
-class CNetGamePlayer
+class CNetworkPeer
 {
 public:
 	int _0x00;
@@ -915,7 +911,7 @@ public:
 		return static_cast<int>(m_PeerId);
 	}
 
-	bool IsPhysical()
+	bool IsValid()
 	{
 		if (this == nullptr)
 			return false;
@@ -923,14 +919,14 @@ public:
 		return m_PeerId != INVALID_PLAYER_INDEX;
 	}
 
-	CPlayerInfo* GetPlayerInfo()
+	CPlayerInfo* GetGamerInfo()
 	{
-		return ((CPlayerInfo*(*)(CNetGamePlayer*))0x827087D8)(this);
+		return ((CPlayerInfo*(*)(CNetworkPeer*))0x827087D8)(this);
 	}
 
 	uint64_t GetRlPeerId()
 	{
-		if (CPlayerInfo* info = GetPlayerInfo())
+		if (CPlayerInfo* info = GetGamerInfo())
 			return info->m_RlPeerID;
 
 		return NULL;
@@ -938,14 +934,14 @@ public:
 
 	uint64_t GetGamerId()
 	{
-		if (CPlayerInfo* info = GetPlayerInfo())
+		if (CPlayerInfo* info = GetGamerInfo())
 			return info->m_GamerID;
 
 		return NULL;
 	}
 };
 
-enum NetObjectAckCode : int
+enum eAckCode : int
 {
 	ACKCODE_SUCCESS,
 	ACKCODE_FAIL,
@@ -955,6 +951,15 @@ enum NetObjectAckCode : int
 	ACKCODE_NONE
 };
 
+class CNetObjParser
+{
+public:
+	static bool ParseCreateClone(eNetworkObjectType type, bool isMissionObject, CMessageBuffer* message)
+	{
+		return ((bool(*)(int, eNetworkObjectType, bool, CMessageBuffer*))0x827920D8)(NULL, type, isMissionObject, message);
+	}
+};
+
 class CNetworkObjectMgr
 {
 public:
@@ -962,29 +967,24 @@ public:
 	uint8_t m_ScriptCreationSeq; //0x18DC0
 
 	//inlcudeAll - Checks for unregistering objects as well as being reassigned
-	CNetworkObject* GetNetworkObjectFromID(short objectID, bool includeAll = false)
+	CNetworkObject* GetNetworkObject(short objectID, bool includeAll = false)
 	{
 		return ((CNetworkObject*(*)(CNetworkObjectMgr*, short, bool))0x826ED600)(this, objectID, includeAll);
 	}
 
-	void AddCreateAck(uint8_t peer, short net_id, NetObjectAckCode ack)
+	void AddCreateAck(uint8_t peer, short net_id, eAckCode ack)
 	{
-		((void(*)(CNetworkObjectMgr*, uint8_t, short, NetObjectAckCode))0x826F1468)(this, peer, net_id, ack);
+		((void(*)(CNetworkObjectMgr*, uint8_t, short, eAckCode))0x826F1468)(this, peer, net_id, ack);
 	}
 
-	static const char* GetObjectTypeName(NetworkObjectType type, bool isMissionObject)
+	static const char* GetObjectTypeName(eNetworkObjectType type, bool isMissionObject)
 	{
-		return ((const char*(*)(NetworkObjectType, bool))0x82702468)(type, isMissionObject);
+		return ((const char*(*)(eNetworkObjectType, bool))0x82702468)(type, isMissionObject);
 	}
 
-	static bool SkipCloneData(NetworkObjectType type, bool isMissionObject, CMessage* message)
+	bool ChangeOwner(CNetworkObject* obj, CNetworkPeer* player, bool force)
 	{
-		return ((bool(*)(int, NetworkObjectType, bool, CMessage*))0x827920D8)(NULL, type, isMissionObject, message);
-	}
-
-	bool ChangeOwner(CNetworkObject* obj, CNetGamePlayer* player, bool force)
-	{
-		return ((bool(*)(CNetworkObjectMgr*, CNetworkObject*, CNetGamePlayer*, bool))0x826F3668)(this, obj, player, force);
+		return ((bool(*)(CNetworkObjectMgr*, CNetworkObject*, CNetworkPeer*, bool))0x826F3668)(this, obj, player, force);
 	}
 
 	void AddRemove(uint8_t peer, short objectID, int ownershipToken)
@@ -1002,9 +1002,9 @@ public:
 		((void(*)(CNetworkObjectMgr*, CNetworkObject*, bool, bool))0x826EF7D8)(this, obj, force, destroyObject);
 	}
 
-	void ProcessCloneCreateData(uint8_t peer, NetworkObjectType objectType, short objectID, uint8_t objectFlags, CMessage* message)
+	void ProcessCloneCreateData(uint8_t peer, eNetworkObjectType objectType, short objectID, uint8_t objectFlags, CMessageBuffer* message)
 	{
-		((void(*)(CNetworkObjectMgr*, uint8_t, NetworkObjectType, short, uint8_t, CMessage*))0x826F1670)(this, peer, objectType, objectID, objectFlags, message);
+		((void(*)(CNetworkObjectMgr*, uint8_t, eNetworkObjectType, short, uint8_t, CMessageBuffer*))0x826F1670)(this, peer, objectType, objectID, objectFlags, message);
 	}
 };
 
@@ -1062,18 +1062,18 @@ public:
 	virtual const char* GetEventName();
 	virtual bool call3();
 	virtual bool call4();
-	virtual bool IsInScope(CNetGamePlayer* peer);
-	virtual bool TimeToResend(DWORD time);
-	virtual void Prepare(CMessage* message);
-	virtual void Handle(CMessage* message, int peer);
+	virtual bool IsInScope(CNetworkPeer* peer);
+	virtual bool TimeToResend(uint32_t time);
+	virtual void Prepare(CMessageBuffer* message);
+	virtual void Handle(CMessageBuffer* message, int peer);
 	virtual bool Decide();
-	virtual void PrepareReply(CMessage* message);
-	virtual void HandleReply(CMessage* message);
-	virtual void PrepareExtraData(CMessage* message, bool has_extra_data); //has_extra_data is always true
-	virtual bool HandleExtraData(CMessage* message, bool has_extra_data);
+	virtual void PrepareReply(CMessageBuffer* message);
+	virtual void HandleReply(CMessageBuffer* message);
+	virtual void PrepareExtraData(CMessageBuffer* message, bool has_extra_data); //has_extra_data is always true
+	virtual bool HandleExtraData(CMessageBuffer* message, bool has_extra_data);
 	virtual void call14();
 	virtual void call15();
-	virtual void call16();
+	virtual void CleanUp();
 	virtual void call17();
 	virtual void call18();
 	virtual void call19();
@@ -1084,14 +1084,14 @@ public:
 	virtual void call24();
 }; static_assert(sizeof(CNetworkEvent) == 0x1C, "sizeof CNetworkEvent is incorrect!");
 
-class netEventMgr
+class CNetworkEventMgr
 {
 public:
 	int _0x00;
 
 	void CheckForSpaceInPool(bool createSpace)
 	{
-		((void(*)(netEventMgr*, bool))0x826DFFE8)(this, createSpace);
+		((void(*)(CNetworkEventMgr*, bool))0x826DFFE8)(this, createSpace);
 	}
 
 	CNetworkEvent* GetOpenPoolSlot()
@@ -1101,7 +1101,7 @@ public:
 
 	void PrepareEvent(CNetworkEvent* _event)
 	{
-		((void(*)(netEventMgr*, CNetworkEvent*))0x826DFA28)(this, _event);
+		((void(*)(CNetworkEventMgr*, CNetworkEvent*))0x826DFA28)(this, _event);
 	}
 };
 
@@ -1112,14 +1112,14 @@ struct netEvent
 };
 
 class CDynamicPickupsArrayHandler;
-class CNetworkArrayMgrNY
+class CNetworkArrayMgr
 {
 public:
 	int _0x00;
 
-	CDynamicPickupsArrayHandler* GetPickupsArray()
+	CDynamicPickupsArrayHandler* GetDynamicPickupsArrayHandler()
 	{
-		return ((CDynamicPickupsArrayHandler*(*)(CNetworkArrayMgrNY*))0x826DA230)(this);
+		return ((CDynamicPickupsArrayHandler*(*)(CNetworkArrayMgr*))0x826DA230)(this);
 	}
 };
 
@@ -1169,29 +1169,29 @@ public:
 };
 
 #define NETWORK_INTERFACE 0x83109C88
-class NetworkInterface
+class CNetwork
 {
 public:
 	static CNetworkObjectMgr* GetObjectManager() { return reinterpret_cast<CNetworkObjectMgr*>(0x8310CFFC); }
-	static CNetworkArrayMgrNY* GetArrayMgr() { return reinterpret_cast<CNetworkArrayMgrNY*>(0x831D6930); }
+	static CNetworkArrayMgr* GetArrayMgr() { return reinterpret_cast<CNetworkArrayMgr*>(0x831D6930); }
 	static CPlayerInfo* GetPlayerInfo(int index) { return (reinterpret_cast<CPlayerInfo**>(0x82C01C70))[index]; }
-	static CNetGamePlayer* GetLocalPlayer() { return ((CNetGamePlayer*(*)(uint32_t))0x826FDD68)(NETWORK_INTERFACE); }
-	static bool AreWeInNetworkGame() { return ((bool(*)())0x826C4CA8)(); }
-	static CPlayerPed* GetLocalPlayerPed()
+	static CNetworkPeer* GetMyPeer() { return ((CNetworkPeer*(*)(uint32_t))0x826FDD68)(NETWORK_INTERFACE); }
+	static bool IsGameInProgress() { return ((bool(*)())0x826C4CA8)(); }
+	static CPlayerPed* GetMyPeerPed()
 	{
-		CPlayerInfo* info = GetPlayerInfo(GetLocalPlayer()->GetPeerID());
+		CPlayerInfo* info = GetPlayerInfo(GetMyPeer()->GetPeerID());
 		return info ? info->GetPlayerPed() : nullptr;
 	}
-	static CNetGamePlayer* GetNetPlayer(int index) { return ((CNetGamePlayer*(*)(uint32_t, int))0x826FE880)(NETWORK_INTERFACE, index); }
-	static CPlayerInfo* GetLocalPlayerInfo() { return GetPlayerInfo(GetLocalPlayer()->GetPeerID()); }
+	static CNetworkPeer* GetPeerFromPeerId(int index) { return ((CNetworkPeer*(*)(uint32_t, int))0x826FE880)(NETWORK_INTERFACE, index); }
+	static CPlayerInfo* GetMyPeerPlayerInfo() { return GetPlayerInfo(GetMyPeer()->GetPeerID()); }
 	static CPlayerInfo* GetPlayerInfoByRlPeerID(uint64_t peerId)
 	{
 		for (int i = 0; i < 16; i++)
 		{
-			CNetGamePlayer* player = GetNetPlayer(i);
-			if (player && player->IsPhysical())
+			CNetworkPeer* player = GetPeerFromPeerId(i);
+			if (player && player->IsValid())
 			{
-				CPlayerInfo* info = player->GetPlayerInfo();
+				CPlayerInfo* info = player->GetGamerInfo();
 				if (info && info->m_RlPeerID == peerId)
 					return info;
 			}
@@ -1199,8 +1199,8 @@ public:
 
 		return nullptr;
 	}
-	static CNetGamePlayer* GetPlayerFromConnectionID(void* base, int cxnId) { return ((CNetGamePlayer*(*)(void*, int))0x826FE808)(base, cxnId); }
-	static netEventMgr* GetEventManager() { return reinterpret_cast<netEventMgr*>(0x830FC514); }
+	static CNetworkPeer* GetPeerFromConnectionId(void* base, int cxnId) { return ((CNetworkPeer*(*)(void*, int))0x826FE808)(base, cxnId); }
+	static CNetworkEventMgr* GetEventManager() { return reinterpret_cast<CNetworkEventMgr*>(0x830FC514); }
 	static netPeerComplainer* GetPeerComplainer() { return reinterpret_cast<netPeerComplainer*>(0x8315ECB0); }
 	static snSession* GetSession()
 	{

@@ -8,6 +8,7 @@
 #include "other.h"
 #include "event.h"
 #include "clone.h"
+//test
 
 using namespace::std;
 
@@ -42,19 +43,19 @@ unsigned int scrComputeHash(const char *key)
 	return hash;
 }
 
-Detour<void> CWeaponInfoManager_LoadXML_detour;
-void CWeaponInfoManager_LoadXML(const char* weaponxml)
+Detour<void> CWeaponInfo_LoadWeaponXMLFile_detour;
+void CWeaponInfo_LoadWeaponXMLFile(const char* weaponxml)
 {
-	CWeaponInfoManager_LoadXML_detour.CallOriginal(weaponxml);
+	CWeaponInfo_LoadWeaponXMLFile_detour.CallOriginal(weaponxml);
 
-	CWeaponInfo* rocket = CWeaponInfoManager::GetInfo(WEAPON_ROCKET);
+	CWeaponInfo* rocket = CWeaponInfo::GetWeaponInfo(WEAPON_ROCKET);
 	if (rocket)
 	{
 		rocket->m_AimFlags |= 0xC005; //CAN_AIM - CAN_FREE_AIM - ANIM_RELOAD - ANIM_CROUCH_FIRE
 		rocket->m_AnimationIndex = 29; //grenade animation group
 	}
 
-	CWeaponInfo* e2_rocket = CWeaponInfoManager::GetInfo(WEAPON_EPISODIC_18);
+	CWeaponInfo* e2_rocket = CWeaponInfo::GetWeaponInfo(WEAPON_EPISODIC_18);
 	if (e2_rocket)
 	{
 		e2_rocket->m_AimFlags |= 0xC005; //CAN_AIM - CAN_FREE_AIM - ANIM_RELOAD - ANIM_CROUCH_FIRE
@@ -80,39 +81,39 @@ BOOL Patches()
 	*reinterpret_cast<void**>(0x82058DCC) = CNetworkArrayHandler_GetElementIndex; //CPedGroups
 	*reinterpret_cast<void**>(0x820BCD9C) = CNetworkArrayHandler_GetElementIndex; //CDispatch
 
-	CNetworkArrayHandler_CanApplyElementData_detour.SetupDetour(0x82705878, CNetworkArrayHandler_CanApplyElementData);
-	CPedGroupsArrayHandler_CanApplyElementData_detour.SetupDetour(0x82717330, CPedGroupsArrayHandler_CanApplyElement);
-	CPedGroupsArrayHandler_ReadUpdate_detour.SetupDetour(0x82717798, CPedGroupsArrayHandler_ReadUpdate);
-	CScriptClientVariablesArrayHandler_ReadUpdate_detour.SetupDetour(0x82716998, CScriptClientVariablesArrayHandler_ReadUpdate);
+	CNetworkArrayHandler_DoesPeerHaveAuthorityOverThisElement_detour.SetupDetour(0x82705878, CNetworkArrayHandler_DoesPeerHaveAuthorityOverThisElement);
+	CPedGroupsArrayHandler_DoesPeerHaveAuthorityOverThisElement_detour.SetupDetour(0x82717330, CPedGroupsArrayHandler_DoesPeerHaveAuthorityOverThisElement);
+	CPedGroupsArrayHandler_ReadElement_detour.SetupDetour(0x82717798, CPedGroupsArrayHandler_ReadElement);
+	CScriptClientVariablesArrayHandler_ReadElement_detour.SetupDetour(0x82716998, CScriptClientVariablesArrayHandler_ReadElement);
 
 	//Sync Protections
-	CNetObjPhysical_SerializeAttachment_detour.SetupDetour(0x82722638, CNetObjPhysical_SerializeAttachment);
-	CNetObjPed_SerializeMovementAnimTask_detour.SetupDetour(0x8270F8F0, CNetObjPed_SerializeMovementAnimTask);
-	CNetObjPed_SerializeAIData_detour.SetupDetour(0x8270BA90, CNetObjPed_SerializeAIData);
-	CTaskQuery_Allocate_detour.SetupDetour(0x823E5860, CTaskQuery_Allocate);
-	CNetCloneTaskSimplePlayerAimProjectile_CreateLocalTask_detour.SetupDetour(0x8271B5A8, CNetCloneTaskSimplePlayerAimProjectile_CreateLocalTask);
-	CNetObjPed_SerializeGameStateData_detour.SetupDetour(0x8270DB70, CNetObjPed_SerializeGameStateData);
-	CNetObjPed_SerializeAttachment_detour.SetupDetour(0x8270EEA8, CNetObjPed_SerializeAttachment);
-	CNetObjPlayer_SerializeAppearanceData_detour.SetupDetour(0x82779A90, CNetObjPlayer_SerializeAppearanceData);
-	CDummyTask_SerializeWeaponThrow_detour.SetupDetour(0x8254B350, CDummyTask_SerializeWeaponThrow);
+	CNetObjPhysical_SyncAttach_detour.SetupDetour(0x82722638, CNetObjPhysical_SyncAttach);
+	CNetObjPed_SyncMovementGroup_detour.SetupDetour(0x8270F8F0, CNetObjPed_SyncMovementGroup);
+	CNetObjPed_SyncPedAI_detour.SetupDetour(0x8270BA90, CNetObjPed_SyncPedAI);
+	CQueriableInterface_CreateEmptyTaskInfo_detour.SetupDetour(0x823E5860, CQueriableInterface_CreateEmptyTaskInfo);
+	CNetCloneTaskSimplePlayerAimProjectile_Update_detour.SetupDetour(0x8271B5A8, CNetCloneTaskSimplePlayerAimProjectile_Update);
+	CNetObjPed_SyncGameState_detour.SetupDetour(0x8270DB70, CNetObjPed_SyncGameState);
+	CNetObjPed_SyncAttach_detour.SetupDetour(0x8270EEA8, CNetObjPed_SyncAttach);
+	CNetObjPlayer_SyncPedAppearance_detour.SetupDetour(0x82779A90, CNetObjPlayer_SyncPedAppearance);
+	CDummyTask_PlayAnim_SyncNetworkData_detour.SetupDetour(0x8254B350, CDummyTask_PlayAnim_SyncNetworkData);
 
 	//Other Protections
-	netPeerMgr_HandleGetReadyToStartPlaying_detour.SetupDetour(0x826FF198, netPeerMgr_HandleGetReadyToStartPlaying);
+	CNetworkPeerMgr_HandleGetReadyToStartPlaying_detour.SetupDetour(0x826FF198, CNetworkPeerMgr_HandleGetReadyToStartPlaying);
 	CMsgPeerData_Import_detour.SetupDetour(0x826FFAE0, CMsgPeerData_Import);
 	CMsgReassignConfirm_Import_detour.SetupDetour(0x82784138, CMsgReassignConfirm_Import);
 	CMsgReassignNegotiate_Import_detour.SetupDetour(0x82783F98, CMsgReassignNegotiate_Import);
 	CMsgReassignResponse_Import_detour.SetupDetour(0x827842D8, CMsgReassignResponse_Import);
 	netComplaintMsg_Import_detour.SetupDetour(0x829EC4B8, netComplaintMsg_Import);
-	CNetworkPlayerMgr_AddTemporaryPlayer_detour.SetupDetour(0x82700108, CNetworkPlayerMgr_AddTemporaryPlayer);
-	CWeaponInfoManager_LoadXML_detour.SetupDetour(0x8229B548, CWeaponInfoManager_LoadXML);
+	CNetworkPeerMgr_AddRemotePeer_detour.SetupDetour(0x82700108, CNetworkPeerMgr_AddRemotePeer);
+	CWeaponInfo_LoadWeaponXMLFile_detour.SetupDetour(0x8229B548, CWeaponInfo_LoadWeaponXMLFile);
 
 	//Event Protections
-	netEventMgr_HandleEvent_detour.SetupDetour(0x826E39C8, netEventMgr_HandleEvent);
+	CNetworkEventMgr_HandleEvent_detour.SetupDetour(0x826E39C8, CNetworkEventMgr_HandleEvent);
 
 	//Clone Protections
 	CNetworkObjectMgr_ProcessCloneCreateData_detour.SetupDetour(0x826F1670, CNetworkObjectMgr_ProcessCloneCreateData);
-	CNetObjHeli_SerializeCloneData_detour.SetupDetour(0x8272A428, CNetObjHeli_SerializeCloneData);
-	netObjectMgrBase_Update_detour.SetupDetour(0x826F3DD0, netObjectMgrBase_Update);
+	CNetObjHeli_CreateClone_detour.SetupDetour(0x8272A428, CNetObjHeli_CreateClone);
+	CNetworkObjectMgr_Update_detour.SetupDetour(0x826F3DD0, CNetworkObjectMgr_Update);
 
 	//Other Hooks
 	CMsgPeerData_Export_detour.SetupDetour(0x826FFA28, CMsgPeerData_Export);

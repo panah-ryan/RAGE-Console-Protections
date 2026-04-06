@@ -18,12 +18,12 @@ bool ReturnEventSuccess() //Nullsub to replace our Handle and Decide virtual cal
 	return true;
 }
 
-Detour<void> netEventMgr_HandleEvent_detour;
-void netEventMgr_HandleEvent(netEventMgr* manager, CNetworkEvent* pEvent, CMessage* message, int peer, short messageSeq, int eventId)
+Detour<void> CNetworkEventMgr_HandleEvent_detour;
+void CNetworkEventMgr_HandleEvent(CNetworkEventMgr* manager, CNetworkEvent* pEvent, CMessageBuffer* message, int peer, short messageSeq, int eventId)
 {
 	NetGameEventTypes type = pEvent->m_EventType;
 	uint32_t* vftable = *reinterpret_cast<uint32_t**>(pEvent);
-	int seek_bits = message->m_buffer.m_CursorPos + message->m_buffer.m_BaseBitOffset;
+	int seek_bits = message->GetPos();
 	bool skip_processing = false;
 	static uint32_t modified_vftable[24];
 
@@ -55,7 +55,7 @@ void netEventMgr_HandleEvent(netEventMgr* manager, CNetworkEvent* pEvent, CMessa
 		{
 			short net_id = static_cast<short>(message->PeekShort(seek_bits));
 
-			CNetworkObject* net_obj = NetworkInterface::GetObjectManager()->GetNetworkObjectFromID(net_id, false);
+			CNetworkObject* net_obj = CNetwork::GetObjectManager()->GetNetworkObject(net_id, false);
 			if (net_obj == nullptr) //Invalid network id
 				skip_processing = true;
 
@@ -67,7 +67,7 @@ void netEventMgr_HandleEvent(netEventMgr* manager, CNetworkEvent* pEvent, CMessa
 			float pos[3];
 			int our_char = NULL;
 			float dist = FLT_MAX;
-			CPlayerPed* our_ped = NetworkInterface::GetLocalPlayerPed();
+			CPlayerPed* our_ped = CNetwork::GetMyPeerPed();
 
 			EXPLOSION_TAG explosion_type = static_cast<EXPLOSION_TAG>(message->PeekSignedInt(6, seek_bits + 12 + 12));
 			message->PeekVector3(19, seek_bits + 12 + 12 + 6 + 32, pos);
@@ -121,9 +121,9 @@ void netEventMgr_HandleEvent(netEventMgr* manager, CNetworkEvent* pEvent, CMessa
 		}
 		case CHANGE_RADIO_STATION_EVENT:
 		{
-			int index_1 = static_cast<int>(message->PeekInt(8, seek_bits + 8 + 8 + 24));
+			int station_id = static_cast<int>(message->PeekInt(8, seek_bits + 8 + 8 + 24));
 
-			if (index_1 > 30 || index_1 < 0) //Some index is out of bounds
+			if (station_id > 30 || station_id < 0) //Station ID is out of bounds
 				skip_processing = true;
 
 			break;
@@ -136,7 +136,7 @@ void netEventMgr_HandleEvent(netEventMgr* manager, CNetworkEvent* pEvent, CMessa
 	if((((1 << type) & should_process_event_bitset) == 0) || skip_processing)
 	{
 		if(skip_processing)
-			printf("[Event - %s] - %s tried to send invalid event data!\n", pEvent->GetEventName(), NetworkInterface::GetPlayerInfo(peer)->GetPlayerName());
+			printf("[Event - %s] - %s tried to send invalid event data!\n", pEvent->GetEventName(), CNetwork::GetPlayerInfo(peer)->GetPlayerName());
 
 		XMemCpy(modified_vftable, vftable, sizeof(modified_vftable)); //copy over vftable of current class
 
@@ -146,5 +146,5 @@ void netEventMgr_HandleEvent(netEventMgr* manager, CNetworkEvent* pEvent, CMessa
 		*reinterpret_cast<uint32_t**>(pEvent) = modified_vftable; //Set our modified vftable to the class
 	}
 
-	netEventMgr_HandleEvent_detour.CallOriginal(manager, pEvent, message, peer, messageSeq, eventId); //We are good to process the event now
+	CNetworkEventMgr_HandleEvent_detour.CallOriginal(manager, pEvent, message, peer, messageSeq, eventId); //We are good to process the event now
 }

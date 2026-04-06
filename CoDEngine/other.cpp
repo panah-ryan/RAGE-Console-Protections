@@ -4,21 +4,21 @@
 #include <algorithm>
 #include "natives.h"
 
-int& session_flags = *reinterpret_cast<int*>(0x830FAFB0);
+int& ms_StateInfo = *reinterpret_cast<int*>(0x830FAFB0);
 
-Detour<void> netPeerMgr_HandleGetReadyToStartPlaying_detour;
-void netPeerMgr_HandleGetReadyToStartPlaying(void* netPeerMgr, netEvent* evt)
+Detour<void> CNetworkPeerMgr_HandleGetReadyToStartPlaying_detour;
+void CNetworkPeerMgr_HandleGetReadyToStartPlaying(void* netPeerMgr, netEvent* evt)
 {
-	if (session_flags > 7 && session_flags < 11) //Session flags show we are already playing
+	if (ms_StateInfo > 7 && ms_StateInfo < 11) //Session flags show we are already playing
 	{
-		CNetGamePlayer* peer = NetworkInterface::GetPlayerFromConnectionID(netPeerMgr, evt->m_CxnId);
-		if (peer->IsPhysical())
-			printf("[Get Ready to Start Playing] - %s tried to send GetReadyToStartPlaying message when we are already playing!\n", peer->GetPlayerInfo()->GetPlayerName());
+		CNetworkPeer* peer = CNetwork::GetPeerFromConnectionId(netPeerMgr, evt->m_CxnId);
+		if (peer->IsValid())
+			printf("[Get Ready to Start Playing] - %s tried to send GetReadyToStartPlaying message when we are already playing!\n", peer->GetGamerInfo()->GetPlayerName());
 
 		return;
 	}
 
-	netPeerMgr_HandleGetReadyToStartPlaying_detour.CallOriginal(netPeerMgr, evt);
+	CNetworkPeerMgr_HandleGetReadyToStartPlaying_detour.CallOriginal(netPeerMgr, evt);
 }
 
 Detour<bool> CMsgPeerData_Import_detour;
@@ -32,7 +32,7 @@ bool CMsgPeerData_Import(peerDataMsg* msg, uint32_t key, char* buffer, size_t si
 
 		for (int i = 0; i < 16; i++) //We can't ever be sent to a game with no open slots (host wouldn't allow it)
 		{
-			if (!NetworkInterface::GetNetPlayer(i)->IsPhysical()) //We found an open slot in the game lets set our peer id to that slot
+			if (!CNetwork::GetPeerFromPeerId(i)->IsValid()) //We found an open slot in the game lets set our peer id to that slot
 				msg->m_PeerID = i;
 		}
 	}
@@ -98,8 +98,8 @@ bool netComplaintMsg_Import(netComplaintMsg* msg, uint32_t key, char* buffer, si
 	return false;
 }
 
-Detour<bool> CNetworkPlayerMgr_AddTemporaryPlayer_detour;
-bool CNetworkPlayerMgr_AddTemporaryPlayer(void* mgr, CPlayerInfo* info, void* endpoint, peerDataMsg* data, int player_status)
+Detour<bool> CNetworkPeerMgr_AddRemotePeer_detour;
+bool CNetworkPeerMgr_AddRemotePeer(void* mgr, CPlayerInfo* info, void* endpoint, peerDataMsg* data, int player_status)
 {
 	std::string player_name = std::string(info->m_Gamertag);
 	if (std::count(player_name.begin(), player_name.end(), '~') % 2) //We found odd amount of ~ lets remove them
@@ -108,5 +108,5 @@ bool CNetworkPlayerMgr_AddTemporaryPlayer(void* mgr, CPlayerInfo* info, void* en
 		strncpy(info->m_Gamertag, player_name.c_str(), sizeof(info->m_Gamertag));
 	}
 
-	return CNetworkPlayerMgr_AddTemporaryPlayer_detour.CallOriginal(mgr, info, endpoint, data, player_status);
+	return CNetworkPeerMgr_AddRemotePeer_detour.CallOriginal(mgr, info, endpoint, data, player_status);
 }

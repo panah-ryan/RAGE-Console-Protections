@@ -384,6 +384,7 @@ void CNetworkObjectMgr_Update(CNetworkObjectMgr* mgr, bool bUpdateNetworkObjects
 				mgr->GetObjectTypeName(q.objectType, false), 
 				q.objectID, 
 				CWorld::GetPlayerInfo(q.peer)->GetPlayerName());
+
 			mgr->ProcessCloneCreateData(q.peer, q.objectType, q.objectID, q.objectFlags, &q.message);
 			delete q.message.m_buffer.m_ReadBits; //Processed message lets delete it
 		}

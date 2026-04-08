@@ -40,6 +40,47 @@ bool CPedGroupsArrayHandler_DoesPeerHaveAuthorityOverThisElement(networkArrayHan
 	return CPedGroupsArrayHandler_DoesPeerHaveAuthorityOverThisElement_detour.CallOriginal(handler, index, peer, empty); //Was safe so lets continue
 }
 
+/*
+* ----- Message Breakdown -----
+* CPlayerInfoArray
+*	- Player State 3 bits
+* 
+* CStaticPickupsArray
+*	- Regen Time 11 bits
+* 
+* CDynamicPickupsArray
+*	- Reference Index 16 bits
+*	- Type 5 bits
+*	- Model Hash 32 bits
+*	- Position 19 bits
+*	- Orientation 27 bits
+*	- Value 16 bits
+*	- Room Hash Key 32 bits
+*	- Light Effect 1 bit
+*	- Has Blip 1 bit
+*	- Script Creation Sequence 8 bits
+*	- Ped Owner 12 bits
+* 
+* CScriptHostVariablesArray
+*	- Script Creation Sequence 8 bits
+*	- Pickups Script Creation Sequence 8 bits
+*	- HostVars Buffer
+* 
+* CScriptClientVariablesArray
+*	- ClientVars Buffer
+* 
+* CPedGroupsArray
+*	- Created By 2 bits
+*	- Max Seperation 7 bits
+*	for loop 8
+*		- Member 12 bits
+* 
+* CDispatchOrderArray
+*	- Ped 12 bits
+*	- Order 3 bits
+*	- Position 11 bits
+*/
+
 Detour<bool> CPedGroupsArrayHandler_ReadElement_detour;
 bool CPedGroupsArrayHandler_ReadElement(networkArrayHandler* handler, CMessageBuffer* message, int index)
 {
@@ -52,7 +93,7 @@ bool CPedGroupsArrayHandler_ReadElement(networkArrayHandler* handler, CMessageBu
 			int seek_bits = message->GetPos() + 2 + 7;
 			for (int i = 0; i < 8; i++)
 			{
-				uint16_t netId = message->PeekShort(seek_bits);
+				uint16_t netId = message->PeekObjectId(seek_bits);
 				if (netId == ourPed->GetNetworkObject()->GetNetworkID()) //Network ID is the same as ours (means we are being added to a group)
 				{
 					if (index < 16 && ms_PeerMgr.GetPeerFromPeerId(index)->IsValid())

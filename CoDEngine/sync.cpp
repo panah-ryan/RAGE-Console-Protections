@@ -16,7 +16,7 @@ int CNetObjPhysical_SyncAttach(CNetworkObject* obj, SyncType type, CMessageBuffe
 	{
 		if (message->PeekBool(seek_bits)) //Check if obj is marked as attachment
 		{
-			uint16_t net_id = message->PeekShort(seek_bits + 1); //Read network id for what obj is being attached to
+			uint16_t net_id = message->PeekObjectId(seek_bits + 1); //Read network id for what obj is being attached to
 			CNetworkObject* base = ms_objectMgr.GetNetworkObject(net_id);
 			CNetworkPeer* owner = obj->GetPeerOwner();
 
@@ -180,7 +180,7 @@ int CNetObjPed_SyncAttach(CNetworkObject* obj, SyncType type, CMessageBuffer* me
 	{
 		if (message->PeekBool(seek_bits)) //Check if ped is attaching to something
 		{
-			uint16_t net_id = message->PeekShort(seek_bits + 1); //Read network id for what obj is being attached to
+			uint16_t net_id = message->PeekObjectId(seek_bits + 1); //Read network id for what obj is being attached to
 			CNetworkObject* base = ms_objectMgr.GetNetworkObject(net_id);
 			CNetworkPeer* owner = obj->GetPeerOwner();
 

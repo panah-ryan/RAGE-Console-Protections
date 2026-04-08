@@ -592,7 +592,7 @@ public:
 		return m_buffer.m_MaxBits >> 3;
 	}
 
-	uint16_t PeekShort(int srcBitOffset)
+	uint16_t PeekObjectId(int srcBitOffset)
 	{
 		return static_cast<uint16_t>(m_buffer.PeekUnsigned<uint32_t>(12, srcBitOffset));
 	}

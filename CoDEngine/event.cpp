@@ -54,7 +54,7 @@ void CNetworkEventMgr_HandleEvent(void* manager, CNetworkEvent* pEvent, CMessage
 		case REMOVE_WEAPON_EVENT: 
 		case REMOVE_ALL_WEAPONS_EVENT: 
 		{
-			short net_id = static_cast<short>(message->PeekShort(seek_bits));
+			short net_id = static_cast<short>(message->PeekObjectId(seek_bits));
 
 			CNetworkObject* net_obj = ms_objectMgr.GetNetworkObject(net_id, false);
 			if (net_obj == nullptr) //Invalid network id

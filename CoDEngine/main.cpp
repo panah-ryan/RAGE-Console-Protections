@@ -8,7 +8,6 @@
 #include "other.h"
 #include "event.h"
 #include "clone.h"
-//test
 
 using namespace::std;
 
@@ -48,18 +47,21 @@ void CWeaponInfo_LoadWeaponXMLFile(const char* weaponxml)
 {
 	CWeaponInfo_LoadWeaponXMLFile_detour.CallOriginal(weaponxml);
 
+	uint32_t flags = 1 << CAN_AIM | 1 << CAN_FREE_AIM | 1 << ANIM_RELOAD | 1 << ANIM_CROUCH_FIRE;
+	int anim_id = CAnimAssociations::GetInstance()->GetGroupId("grenade");
+
 	CWeaponInfo* rocket = CWeaponInfo::GetWeaponInfo(WEAPON_ROCKET);
 	if (rocket)
 	{
-		rocket->m_AimFlags |= 0xC005; //CAN_AIM - CAN_FREE_AIM - ANIM_RELOAD - ANIM_CROUCH_FIRE
-		rocket->m_AnimationIndex = 29; //grenade animation group
+		rocket->m_AimFlags |= flags;
+		rocket->m_AnimationIndex = anim_id;
 	}
 
 	CWeaponInfo* e2_rocket = CWeaponInfo::GetWeaponInfo(WEAPON_EPISODIC_18);
 	if (e2_rocket)
 	{
-		e2_rocket->m_AimFlags |= 0xC005; //CAN_AIM - CAN_FREE_AIM - ANIM_RELOAD - ANIM_CROUCH_FIRE
-		e2_rocket->m_AnimationIndex = 29; //grenade animation group
+		e2_rocket->m_AimFlags |= flags;
+		e2_rocket->m_AnimationIndex = anim_id; 
 	}
 }
 

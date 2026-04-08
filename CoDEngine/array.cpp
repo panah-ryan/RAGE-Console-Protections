@@ -32,7 +32,7 @@ bool CNetworkArrayHandler_DoesPeerHaveAuthorityOverThisElement(networkArrayHandl
 }
 
 Detour<bool> CPedGroupsArrayHandler_DoesPeerHaveAuthorityOverThisElement_detour;
-bool CPedGroupsArrayHandler_DoesPeerHaveAuthorityOverThisElement(CPedGroupsArrayHandler* handler, int index, int peer, bool empty)
+bool CPedGroupsArrayHandler_DoesPeerHaveAuthorityOverThisElement(networkArrayHandler* handler, int index, int peer, bool empty)
 {
 	if (index == 0 && handler->m_ShouldSkipMessage) //We found a message to skip, lets say we can't apply the data
 		return false;
@@ -41,11 +41,11 @@ bool CPedGroupsArrayHandler_DoesPeerHaveAuthorityOverThisElement(CPedGroupsArray
 }
 
 Detour<bool> CPedGroupsArrayHandler_ReadElement_detour;
-bool CPedGroupsArrayHandler_ReadElement(CPedGroupsArrayHandler* handler, CMessageBuffer* message, int index)
+bool CPedGroupsArrayHandler_ReadElement(networkArrayHandler* handler, CMessageBuffer* message, int index)
 {
-	if (index >= 16 || (CNetwork::GetMyPeer()->GetPeerID() != index && CNetwork::IsGameInProgress()))
+	if (index >= 16 || (ms_PeerMgr.GetMyPeer()->GetPeerID() != index && CNetwork::IsGameInProgress()))
 	{
-		CPlayerPed* ourPed = CNetwork::GetMyPeerPed();
+		CPlayerPed* ourPed = CWorld::GetMainPlayerPed();
 		if (ourPed && ourPed->GetNetworkObject())
 		{
 			//skip reading created by and seperation value (not important)
@@ -55,8 +55,8 @@ bool CPedGroupsArrayHandler_ReadElement(CPedGroupsArrayHandler* handler, CMessag
 				uint16_t netId = message->PeekShort(seek_bits);
 				if (netId == ourPed->GetNetworkObject()->GetNetworkID()) //Network ID is the same as ours (means we are being added to a group)
 				{
-					if (index < 16 && CNetwork::GetPeerFromPeerId(index)->IsValid())
-						printf("[Ped Group Array] - Removing ourself from %s's group...\n", CNetwork::GetPlayerInfo(index)->GetPlayerName());
+					if (index < 16 && ms_PeerMgr.GetPeerFromPeerId(index)->IsValid())
+						printf("[Ped Group Array] - Removing ourself from %s's group...\n", CWorld::GetPlayerInfo(index)->GetPlayerName());
 					else
 						printf("[Ped Group Array] - Removing ourself from %i group...\n", index);
 
@@ -150,15 +150,15 @@ bool CScriptClientVariablesArrayHandler_ReadElement(CScriptVariablesArrayHandler
 
 			if (array_index == 4 && (vars[player_index].m_gameModeSuggestion > GAME_MODE_FREE_MODE || vars[player_index].m_gameModeSuggestion < GAME_MODE_SINGLE_PLAYER)) //Value is going to be outside of our array in freemode_cr
 			{
-				if (CNetwork::GetPeerFromPeerId(player_index)->IsValid())
-					printf("[Client Broadcast Vars] - %s tried to send you to singleplayer!\n", CNetwork::GetPlayerInfo(player_index)->GetPlayerName());
+				if (ms_PeerMgr.GetPeerFromPeerId(player_index)->IsValid())
+					printf("[Client Broadcast Vars] - %s tried to send you to singleplayer!\n", CWorld::GetPlayerInfo(player_index)->GetPlayerName());
 
 				vars[player_index].m_gameModeSuggestion = GAME_MODE_SINGLE_PLAYER; //Setting vote to singleplayer which game script just ignores
 			}
 			else if (array_index == 5 && (vars[player_index].m_voteToKickIndex > 15 || vars[player_index].m_voteToKickIndex < -1)) //Vote to kick also has the same bug
 			{
-				if (CNetwork::GetPeerFromPeerId(player_index)->IsValid())
-					printf("[Client Broadcast Vars] - %s tried to send you to singleplayer!\n", CNetwork::GetPlayerInfo(player_index)->GetPlayerName());
+				if (ms_PeerMgr.GetPeerFromPeerId(player_index)->IsValid())
+					printf("[Client Broadcast Vars] - %s tried to send you to singleplayer!\n", CWorld::GetPlayerInfo(player_index)->GetPlayerName());
 
 				vars[player_index].m_voteToKickIndex = -1; //Setting vote to -1 which game script ignores
 			}
@@ -171,15 +171,15 @@ bool CScriptClientVariablesArrayHandler_ReadElement(CScriptVariablesArrayHandler
 
 			if (array_index == 3 && (vars[player_index].m_voteToKickIndex > 24 || vars[player_index].m_voteToKickIndex < -1))
 			{
-				if (CNetwork::GetPeerFromPeerId(player_index)->IsValid())
-					printf("[Client Broadcast Vars] - %s tried to send you to singleplayer!\n", CNetwork::GetPlayerInfo(player_index)->GetPlayerName());
+				if (ms_PeerMgr.GetPeerFromPeerId(player_index)->IsValid())
+					printf("[Client Broadcast Vars] - %s tried to send you to singleplayer!\n", CWorld::GetPlayerInfo(player_index)->GetPlayerName());
 
 				vars[player_index].m_voteToKickIndex = -1;
 			}
 			else if (array_index == 4 && (vars[player_index].m_gameModeSuggestion > GAME_MODE_FREE_MODE || vars[player_index].m_gameModeSuggestion < GAME_MODE_SINGLE_PLAYER))
 			{
-				if (CNetwork::GetPeerFromPeerId(player_index)->IsValid())
-					printf("[Client Broadcast Vars] - %s tried to send you to singleplayer!\n", CNetwork::GetPlayerInfo(player_index)->GetPlayerName());
+				if (ms_PeerMgr.GetPeerFromPeerId(player_index)->IsValid())
+					printf("[Client Broadcast Vars] - %s tried to send you to singleplayer!\n", CWorld::GetPlayerInfo(player_index)->GetPlayerName());
 
 				vars[player_index].m_gameModeSuggestion = GAME_MODE_SINGLE_PLAYER;
 			}
@@ -192,15 +192,15 @@ bool CScriptClientVariablesArrayHandler_ReadElement(CScriptVariablesArrayHandler
 
 			if (array_index == 3 && (vars[player_index].m_voteToKickIndex > 15 || vars[player_index].m_voteToKickIndex < -1))
 			{
-				if (CNetwork::GetPeerFromPeerId(player_index)->IsValid())
-					printf("[Client Broadcast Vars] - %s tried to send you to singleplayer!\n", CNetwork::GetPlayerInfo(player_index)->GetPlayerName());
+				if (ms_PeerMgr.GetPeerFromPeerId(player_index)->IsValid())
+					printf("[Client Broadcast Vars] - %s tried to send you to singleplayer!\n", CWorld::GetPlayerInfo(player_index)->GetPlayerName());
 
 				vars[player_index].m_voteToKickIndex = -1;
 			}
 			else if (array_index == 4 && (vars[player_index].m_gameModeSuggestion > 30 || vars[player_index].m_gameModeSuggestion < GAME_MODE_SINGLE_PLAYER))
 			{
-				if (CNetwork::GetPeerFromPeerId(player_index)->IsValid())
-					printf("[Client Broadcast Vars] - %s tried to send you to singleplayer!\n", CNetwork::GetPlayerInfo(player_index)->GetPlayerName());
+				if (ms_PeerMgr.GetPeerFromPeerId(player_index)->IsValid())
+					printf("[Client Broadcast Vars] - %s tried to send you to singleplayer!\n", CWorld::GetPlayerInfo(player_index)->GetPlayerName());
 
 				vars[player_index].m_gameModeSuggestion = GAME_MODE_SINGLE_PLAYER;
 			}

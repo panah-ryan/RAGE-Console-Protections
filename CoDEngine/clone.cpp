@@ -6,19 +6,20 @@
 #include <vector>
 #include "util.h"
 
-enum eEntityOwnedBy : int
+enum eObjectCreatedBy : int
 {
-	ENTITY_OWNEDBY_UNKNOWN,
-	ENTITY_OWNEDBY_1,
-	ENTITY_OWNEDBY_2,
-	ENTITY_OWNEDBY_SCRIPT,
-	ENTITY_OWNEDBY_4,
-	ENTITY_OWNEDBY_5,
-	ENTITY_OWNEDBY_DEBUG
+	CREATEDBY_INVALID,
+	CREATEDBY_RANDOM,
+	CREATEDBY_MISSION,
+	CREATEDBY_TEMP,
+	CREATEDBY_FRAGMENT_CACHE,
+	CREATEDBY_UNUSED,
+	CREATEDBY_GAME
 };
 
 uint32_t should_process_clone_bitset = 0x3BF; //All clones enabled
-PED_MODELS ped_blacklist_models[] = { PED_PLAYER, PED_SUPERLOD, PED_CS_ANDREI, PED_CS_ANGIE, PED_CS_BADMAN, PED_CS_BLEDAR, PED_CS_BULGARIN,
+PED_MODELS ped_blacklist_models[] = { 
+	PED_PLAYER, PED_SUPERLOD, PED_CS_ANDREI, PED_CS_ANGIE, PED_CS_BADMAN, PED_CS_BLEDAR, PED_CS_BULGARIN,
 	PED_CS_BULGARINHENCH, PED_CS_CIA, PED_CS_DARDAN, PED_CS_DAVETHEMATE, PED_CS_DMITRI,
 	PED_CS_EDTHEMATE, PED_CS_FAUSTIN, PED_CS_FRANCIS, PED_CS_HOSSAN, PED_CS_ILYENA,
 	PED_CS_IVAN, PED_CS_JAY, PED_CS_JIMMY_PEGORINO, PED_CS_MEL, PED_CS_MICHELLE,
@@ -55,7 +56,7 @@ PED_MODELS ped_blacklist_models[] = { PED_PLAYER, PED_SUPERLOD, PED_CS_ANDREI, P
 std::vector<PED_MODELS> ped_blacklist;
 std::vector<uint32_t> object_blacklist;
 
-struct clone_queue
+struct clone_queue //Untested remove if it causes issues
 {
 	CMessageBuffer message;
 	eNetworkObjectType objectType;
@@ -83,11 +84,89 @@ inline bool IsVehicleObjectType(eNetworkObjectType type)
 	return type > NET_OBJ_TYPE_DUMMY_PED && type != NET_OBJ_TYPE_OBJECT;
 }
 
+/*
+* ----- Message Breakdown -----
+* CNetObjPlayer:
+*	- Player Index 5 bits
+*	- Model Hash 32 bits
+*	- Has Target Vehicle 1 bit
+* 
+* CNetObjPed:
+*	- Created By 2 bits
+*	- Model Hash 32 bits
+*	- Some Flag 16 bits
+*	if SCRIPTOBJECT
+*		- Script Creation Sequence 8 bits
+*		- Has Attachment 1 bit
+*		- Has Money 1 bit
+*		if HAS MONEY
+*			- Money 10 bits
+*		- Dies When Injured 1 bit
+*		- Flee When Driving Vehicle 1 bit
+*		- Can Only Be Damaged By Relationship Group 1 bit
+*	- Has Prop 1 bit
+*	if HAS PROP
+*		- Prop Model Hash 32 bits
+*	- Is In Vehicle 1 bit
+*	- Some Flag 1 bit
+* 
+* CNetObjDummyPed:
+*	- Model Hash 32 bits
+*	- Has Prop 1 bit
+*	if HAS PROP
+*		- Prop Model Hash 32 bits
+*		- Weapon Index 6 bits
+*	- Packed Props 20 bits
+*	- Packed Variation 1 32 bits
+*	- Packed Variation 2 32 bits
+* 
+* CNetObjAutomobile: (Automobile, Plane)
+*	CNetObjVehicle unpack
+*	- Are All Doors Closed 1 bit
+*	if !ALL DOORS CLOSED
+*		for loop 6
+*			- Is Door Closed 1 bit
+* 
+* CNetObjObject:
+*	- Created By 3 bits
+*	if SCRIPTOBJECT || CREATEDBY_GAME || CREATEDBY_TEMP
+*		- Model Hash 32 bits
+*		if SCRIPTOBJECT
+*			- Script Creation Sequence 8 bits
+*		- Has Attachment 1 bit
+*	else
+*		- Dummy Position 19 bits
+*		if CREATEDBY_FRAGEMENT_CACHE
+*			- Frag Group Index 5 bits
+*		else
+*			- Player Wants Control 1 bit
+*		- Some flag (if Player Wants Control wasn't already read)
+* 
+* CNetObjHeli:
+*	CNetObjVehicle unpack
+*	- Player Owner 5 bits
+*	- Raised Height 2 bits
+* 
+* CNetObjVehicle: (Bike, Train, Boat)
+*	- Model Hash 32 bits
+*	- Population Type 3 bits
+*	if SCRIPTOBJECT
+*		- Script Creation Sequence 8 bits
+*		- Has Attachment 1 bit
+*		- Take Out Of Parked Car Budget 1 bit
+*		- Can Only Be Damaged By Relationship Group 1 bit
+*	- Status 3 bits
+*	- Some Flag 1 bit
+*	- Siren 1 bit
+*	- Needs To Be Hotwired 1 bit
+*	- Tires Don't Burst 1 bit
+*/
+
 Detour<void> CNetworkObjectMgr_ProcessCloneCreateData_detour;
 void CNetworkObjectMgr_ProcessCloneCreateData(CNetworkObjectMgr* netObjMgr, uint8_t peer, eNetworkObjectType objectType, short objectID, uint8_t objectFlags, CMessageBuffer* message)
 {
 	bool should_we_create = false;
-	BOOL is_mission_object = (objectFlags & GLOBAL_FLAG_SCRIPT_OBJECT) >> 3;
+	BOOL is_mission_object = (objectFlags & CNetworkObject::NETOBJGLOBALFLAG_SCRIPTOBJECT) >> 3;
 	static rate_limiter clone_create_limiter(seconds_to_ms(5), 5);
 
 	if (IsVehicleObjectType(objectType)) //We only queue Vehicles
@@ -115,9 +194,16 @@ void CNetworkObjectMgr_ProcessCloneCreateData(CNetworkObjectMgr* netObjMgr, uint
 			int player_index = static_cast<int>(message->PeekInt(5, seek_bits));
 			uint32_t model_hash = message->PeekInt(32, seek_bits + 5);
 
-			if (!CNetwork::GetPlayerInfo(peer)->GetPlayerPed() //Check if they already have a ped (duplicate ped)
-				&& player_index < 16 && player_index >= 0 //Check if index they are trying to take is valid
-				&& player_index != CNetwork::GetMyPeer()->GetPeerID()) //Check if they are trying to take our index
+			if (player_index > 16 || player_index < 0 || player_index == ms_PeerMgr.GetMyPeer()->GetPeerID()) //Invalid peer id
+			{
+				player_index = CWorld::FindSlotForNewPlayer(); //Just call original function game calls for getting slot when host
+
+				if (player_index != -1)
+					message->PokeInt(player_index, 5, seek_bits); //Write in new player index
+			}
+
+			if (!CWorld::GetPlayerInfo(peer)->GetPlayerPed() //Check if they already have a ped (duplicate ped)
+				&& player_index != -1) //Check if function returned valid index
 				should_we_create = true;
 
 			if (model_hash == NULL || (model_hash != PED_M_Y_MULTIPLAYER && model_hash != PED_F_Y_MULTIPLAYER)) //They are trying to spawn not as default multiplayer model, lets fix that
@@ -153,7 +239,8 @@ void CNetworkObjectMgr_ProcessCloneCreateData(CNetworkObjectMgr* netObjMgr, uint
 			if (message->PeekBool(seek_bits + 32))
 				message->PokeInt(NULL, 32, seek_bits + 32 + 1);
 
-			if (model_hash != NULL && IS_THIS_MODEL_A_PED(model_hash) && std::find(ped_blacklist.begin(), ped_blacklist.end(), model_hash) == ped_blacklist.end()) //Model is valid, is a ped, and doesn't exist in our blacklist
+			if (model_hash != NULL && IS_THIS_MODEL_A_PED(model_hash) 
+				&& std::find(ped_blacklist.begin(), ped_blacklist.end(), model_hash) == ped_blacklist.end()) //Model is valid, is a ped, and doesn't exist in our blacklist
 				should_we_create = true;
 
 			break;
@@ -169,9 +256,9 @@ void CNetworkObjectMgr_ProcessCloneCreateData(CNetworkObjectMgr* netObjMgr, uint
 		}
 		case NET_OBJ_TYPE_OBJECT:
 		{
-			eEntityOwnedBy owned_by = static_cast<eEntityOwnedBy>(message->PeekInt(3, seek_bits) + 1);
+			eObjectCreatedBy created_by = static_cast<eObjectCreatedBy>(message->PeekInt(3, seek_bits) + 1);
 
-			if (is_mission_object || owned_by == ENTITY_OWNEDBY_DEBUG || owned_by == ENTITY_OWNEDBY_SCRIPT)
+			if (is_mission_object || created_by == CREATEDBY_GAME || created_by == CREATEDBY_TEMP)
 			{
 				uint32_t model_hash = message->PeekInt(32, seek_bits + 3);
 
@@ -238,7 +325,9 @@ void CNetworkObjectMgr_ProcessCloneCreateData(CNetworkObjectMgr* netObjMgr, uint
 	if (!should_we_create)
 	{
 		if (objectType < NET_OBJ_TYPE_COUNT && objectType >= NET_OBJ_TYPE_PLAYER)
-			printf("[Clone Create] - Prevented %s from spawning by player %s!\n", CNetworkObjectMgr::GetObjectTypeName(objectType, false), CNetwork::GetPlayerInfo(peer)->GetPlayerName());
+			printf("[Clone Create] - Prevented %s from spawning by player %s!\n", 
+				CNetworkObjectMgr::GetObjectTypeName(objectType, false), 
+				CWorld::GetPlayerInfo(peer)->GetPlayerName());
 
 		return;
 	}
@@ -253,6 +342,7 @@ void CNetworkObjectMgr_ProcessCloneCreateData(CNetworkObjectMgr* netObjMgr, uint
 			if(clone_create_limiter.exceeded_last_process())
 				printf("[Clone Create] - Rate Limiter has kicked in!\n");
 
+			clone_create_queue.push_back(clone);
 			return; //Add to the queue and then return so we don't ack it
 		}
 	}
@@ -268,10 +358,10 @@ bool CNetObjHeli_CreateClone(CNetworkObject* net_heli, CMessageBuffer* message)
 	if (ret)
 	{
 		CHeli* heli = net_heli->GetBaseHeli();
-		if (heli && heli->m_PlayerIndexSpotlight < -1 || heli->m_PlayerIndexSpotlight > 15)
+		if (heli && heli->m_OwnerPlayer < -1 || heli->m_OwnerPlayer > 15)
 		{
-			printf("[Network Heli] - Corrected invalid player spot light crash!\n");
-			heli->m_PlayerIndexSpotlight = -1;
+			printf("[Network Heli] - Corrected invalid Owner Player crash!\n");
+			heli->m_OwnerPlayer = -1;
 		}
 	}
 
@@ -290,7 +380,10 @@ void CNetworkObjectMgr_Update(CNetworkObjectMgr* mgr, bool bUpdateNetworkObjects
 		clone_queue q = clone_create_queue.back();
 		if (q.message.m_buffer.m_ReadBits != nullptr) //We have a valid message
 		{
-			printf("[Clone Queue] - Processing %s (%i) from %s\n", mgr->GetObjectTypeName(q.objectType, false), q.objectID, CNetwork::GetPlayerInfo(q.peer)->GetPlayerName());
+			printf("[Clone Queue] - Processing %s (%i) from %s\n", 
+				mgr->GetObjectTypeName(q.objectType, false), 
+				q.objectID, 
+				CWorld::GetPlayerInfo(q.peer)->GetPlayerName());
 			mgr->ProcessCloneCreateData(q.peer, q.objectType, q.objectID, q.objectFlags, &q.message);
 			delete q.message.m_buffer.m_ReadBits; //Processed message lets delete it
 		}

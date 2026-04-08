@@ -4,14 +4,14 @@
 #include <algorithm>
 #include "natives.h"
 
-int& ms_StateInfo = *reinterpret_cast<int*>(0x830FAFB0);
+CNetwork::StateId& ms_StateInfo = *reinterpret_cast<CNetwork::StateId*>(0x830FAFB0);
 
 Detour<void> CNetworkPeerMgr_HandleGetReadyToStartPlaying_detour;
-void CNetworkPeerMgr_HandleGetReadyToStartPlaying(void* netPeerMgr, netEvent* evt)
+void CNetworkPeerMgr_HandleGetReadyToStartPlaying(CNetworkPeerMgr* netPeerMgr, netEvent* evt)
 {
-	if (ms_StateInfo > 7 && ms_StateInfo < 11) //Session flags show we are already playing
+	if (CNetwork::IsGameInProgress()) //Game is already in progress
 	{
-		CNetworkPeer* peer = CNetwork::GetPeerFromConnectionId(netPeerMgr, evt->m_CxnId);
+		CNetworkPeer* peer = netPeerMgr->GetPeerFromConnectionId(evt->m_CxnId);
 		if (peer->IsValid())
 			printf("[Get Ready to Start Playing] - %s tried to send GetReadyToStartPlaying message when we are already playing!\n", peer->GetGamerInfo()->GetPlayerName());
 
@@ -32,7 +32,7 @@ bool CMsgPeerData_Import(peerDataMsg* msg, uint32_t key, char* buffer, size_t si
 
 		for (int i = 0; i < 16; i++) //We can't ever be sent to a game with no open slots (host wouldn't allow it)
 		{
-			if (!CNetwork::GetPeerFromPeerId(i)->IsValid()) //We found an open slot in the game lets set our peer id to that slot
+			if (!ms_PeerMgr.GetPeerFromPeerId(i)->IsValid()) //We found an open slot in the game lets set our peer id to that slot
 				msg->m_PeerID = i;
 		}
 	}

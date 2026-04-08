@@ -1,13 +1,6 @@
 #pragma once
 #include "stdafx.h"
 
-enum ePopType
-{
-	POPTYPE_UNKNOWN1,
-	POPTYPE_UNKNOWN2,
-	POPTYPE_MISSION
-};
-
 struct CStaticPickupsInfo
 {
 	char _0x00[0x18];
@@ -49,30 +42,14 @@ struct CDynamicPickupsInfo
 	char _0x47[9];
 };
 
-class CPedGroup //0x5C [47]
+struct CPedGroup //0x5C [47]
 {
-public:
 	char _0x00[8];
 	char m_Members[0x44];
 	float m_Seperation; //0x4C
 	int _0x50;
 	uint32_t m_Owner; //0x54
 	int _0x58;
-
-	int GetMemberCount()
-	{
-		return ((int(*)(CPedGroup*))0x8244EDB8)(this);
-	}
-
-	bool IsMemberValid(int index)
-	{
-		return ((bool(*)(CPedGroup*, int))0x8244EB98)(this, index);
-	}
-
-	uint16_t GetMemberNetworkID(int index)
-	{
-		return ((uint16_t(*)(CPedGroup*, int))0x8244EBD8)(this, index);
-	}
 };
 
 enum eWeaponType : int
@@ -137,6 +114,31 @@ enum eWeaponType : int
 	WEAPON_ANYWEAPON,
 };
 
+enum eWeaponFlag
+{
+	CAN_AIM,
+	CAN_AIM_WITH_ARM,
+	CAN_FREE_AIM,
+	FIRST_PERSON,
+	KEEP_CAMERA_BEHIND,
+	GUN,
+	THROWN,
+	HEAVY,
+	SILENCED,
+	MELEE_CLUB,
+	MELEE_BLADE,
+	ARMOUR_PENETRATING,
+	TWO_HANDED,
+	TREAT_AS_2HANDED_IN_COVER,
+	ANIM_RELOAD,
+	ANIM_CROUCH_FIRE,
+	CREATE_VISIBLE_ORDANCE,
+	EXPLOSION_BASED_ON_IMPACT,
+	ADD_SMOKE_ON_EXPLOSION,
+	INSTANT_KILL_IN_MP,
+	HIGHER_BREAK_FORCE
+};
+
 class CWeaponInfo
 {
 public:
@@ -152,6 +154,15 @@ struct CWeapon
 {
 	char _0x00[0x14];
 	eWeaponType m_WeaponIndex;
+};
+
+class CAnimAssociations
+{
+	int _0x00;
+
+public:
+	static CAnimAssociations* GetInstance() { return *reinterpret_cast<CAnimAssociations**>(0x82BF9AA4); }
+	int GetGroupId(const char* animation) { return ((int(*)(CAnimAssociations*, const char*))0x82248CF0)(this, animation); }
 };
 
 class CPedWeaponMgr
@@ -301,12 +312,6 @@ public:
 	virtual void call_10C();
 	virtual void call_110();
 	virtual BOOL IsPlayer();
-	virtual void call_118();
-	virtual void call_11C();
-	virtual void call_120();
-	virtual void call_124();
-	virtual void call_128();
-	virtual void call_12C();
 
 	CPedWeaponMgr* GetInventory()
 	{
@@ -324,8 +329,6 @@ class CPlayerPed : public CPed
 {
 public:
 	int _0xD98;
-
-	virtual void call_130();
 
 }; static_assert(sizeof(CPlayerPed) == 0xD9C, "Incorrect sizeof CPlayerPed");
 
@@ -347,7 +350,7 @@ class CHeli : public CAutomobile
 {
 public:
 	char _0x1FA0[0x4A];
-	signed char m_PlayerIndexSpotlight; //0x1FEA
+	signed char m_OwnerPlayer; //0x1FEA
 };
 
 enum SyncType : int
@@ -358,64 +361,6 @@ enum SyncType : int
 	SYNC_WRITE,
 	SYNC_LOG,
 	SYNC_SIZE
-};
-
-enum eMessageTypes : unsigned int
-{
-	rlUploadMsgUploadFileReply = 0x76,
-	rlUploadMsgOverwriteFileRequest = 0x77,
-	rlUploadMsgOverwriteFileReply = 0x78,
-	rlUploadMsgDownloadFileRequest = 0x79,
-	rlUploadMsgDownloadFileReply = 0x7A,
-	rlUploadMsgOverwriteUserDataRequest = 0x7B,
-	rlUploadMsgOverwriteUserDataReply = 0x7C,
-	MsgArrayElements = 0x7D,
-	MsgArrayElementsAck = 0x7E,
-	MsgCloneSync = 0x7F,
-	MsgDenyJoin = 0x80,
-	MsgGetReadyToStartPlaying = 0x81,
-	MsgHostData = 0x82,
-	MsgInformObjectIds = 0x83,
-	MsgJoinRequest = 0x84,
-	MsgPackedCloneSyncAcks = 0x85,
-	MsgPackedEventsReliable = 0x86,
-	MsgPackedEvents = 0x87,
-	MsgPackedReliables = 0x88,
-	MsgPeerData = 0x89,
-	MsgReassignConfirm = 0x8A,
-	MsgReassignNegotiate = 0x8B,
-	MsgReassignResponse = 0x8C,
-	MsgStartedLocalPlayerPlaying = 0x8D,
-	MsgVoiceStatus = 0x8E,
-	MsgBlacklist = 0x8F,
-	MsgGamerRank = 0x90,
-	MsgGamerRankBroadcast = 0x91,
-	MsgKickPlayer = 0x93,
-	MsgRejoin = 0x94,
-	MsgTvtReservation = 0x95,
-	MsgTvtSummons = 0x96,
-	MsgViralKillMe = 0x97, //no data sent/recieved (no need to sanitize)
-	netComplainMsg = 0x98,
-	netTimeSyncMsg = 0x9A,
-	rlMsgQosProbeRequest = 0x9B,
-	rlMsgSearchRequest = 0x9D,
-	rlmsgSearchResponse = 0x9E,
-	snMsgAddGamerToSessionCmd = 0x9F,
-	snMsgChangeSessionAttributesCmd = 0xA1,
-	snMsgConfigRequest = 0xA2,
-	snMsgConfigResponse = 0xA3,
-	snMsgGamerMatchInfoRequest = 0xA4,
-	snMsgGamerMatchInfoResponse = 0xA5,
-	snMsgJoinRequest = 0xA6,
-	snMsgJoinResponse = 0xA7,
-	snMsgMigrateHostRequest = 0xA8,
-	snMsgMigrateHostResponse = 0xA9,
-	snMsgRegisterForMatchRequest = 0xAA,
-	snMsgRegisterForMatchResponse = 0xAB,
-	//snMsgRemoveGamersFromSessionCmd = 0xAC,
-	snMsgSetInvitableCmd = 0xAD,
-	snMsgSetMaxSlotsCmd = 0xAE,
-	snMsgStartMatchCmd = 0xAF
 };
 
 struct datBitBuffer
@@ -647,11 +592,6 @@ public:
 		return m_buffer.m_MaxBits >> 3;
 	}
 
-	void PokeShort(uint16_t u, int dstBitOffset)
-	{
-		m_buffer.PokeUnsigned<uint32_t>(u, 12, dstBitOffset);
-	}
-
 	uint16_t PeekShort(int srcBitOffset)
 	{
 		return static_cast<uint16_t>(m_buffer.PeekUnsigned<uint32_t>(12, srcBitOffset));
@@ -660,11 +600,6 @@ public:
 	bool PeekBool(int srcBitOffset)
 	{
 		return m_buffer.PeekUnsigned<uint32_t>(1, srcBitOffset) == 1;
-	}
-
-	void PokeBool(bool u, int srcBitOffset)
-	{
-		m_buffer.PokeUnsigned<uint32_t>(u, 1, srcBitOffset);
 	}
 
 	uint32_t PeekInt(int bits, int srcBitOffset)
@@ -683,43 +618,20 @@ public:
 		uint32_t value = m_buffer.PeekUnsigned<uint32_t>(bits - 1, srcBitOffset + 1);
 		return (-sign ^ value) + sign;
 	}
-
-	void PokeSignedInt(int u, int bits, int srcBitOffset)
-	{
-		int sign = u >> 31;
-		m_buffer.PokeUnsigned<uint32_t>(1, sign, srcBitOffset);
-		m_buffer.PokeUnsigned<uint32_t>(bits - 1, (-sign ^ u) + sign, srcBitOffset + 1);
-	}
-
-	void PeekVector3(int bits, int srcBitOffset, float* vec)
-	{
-		int save_cursor = m_buffer.m_CursorPos;
-		int save_read = m_buffer.m_NumBitsRead;
-		int save_source = m_buffer.m_BaseBitOffset;
-
-		m_buffer.m_BaseBitOffset = srcBitOffset;
-		((void(*)(CMessageBuffer*, float*, int))0x82707C28)(this, vec, bits);
-
-		m_buffer.m_CursorPos = save_cursor;
-		m_buffer.m_NumBitsRead = save_read;
-		m_buffer.m_BaseBitOffset = save_source;
-	}
-
-	void ReadBytes(void* buffer, int size)
-	{
-		m_buffer.ReadBytes(reinterpret_cast<uint8_t*>(buffer), size);
-	}
 };
-
-#define GLOBAL_FLAG_PERSISTENT_OWNER 1
-#define GLOBAL_FLAG_CLONE_ALWAYS 1 << 1
-#define GLOBAL_FLAG_NO_CLONE_FOR_ENEMIES 1 << 2
-#define GLOBAL_FLAG_SCRIPT_OBJECT 1 << 3
 
 class CNetworkPeer;
 class CNetworkObject //0x98
 {
 public:
+	enum eGlobalNetObjFlag
+	{
+		NETOBJGLOBALFLAG_PERSISTENTOWNER = 1,
+		NETOBJGLOBALFLAG_CLONEALWAYS = 2,
+		NETOBJGLOBALFLAG_DONTCLONEFORENEMIES = 4,
+		NETOBJGLOBALFLAG_SCRIPTOBJECT = 8
+	};
+
 	CEntity* m_BaseEntity;
 	eNetworkObjectType m_Type; //8
 	uint16_t m_NetID; //0x0C
@@ -745,57 +657,6 @@ public:
 	virtual void call_2C();
 	virtual void call_30();
 	virtual CHeli* GetBaseHeli();
-	virtual void call_38();
-	virtual void call_3C();
-	virtual void CreateNetBlender();
-	virtual void CreatePeerSyncData();
-	virtual void call_48();
-	virtual void Update();
-	virtual void UpdateAfterPhysics();
-	virtual void call_54();
-	virtual void ProcessControl();
-	virtual void CanClone();
-	virtual bool CanDelete();
-	virtual void CanPassControl();
-	virtual void CanAcceptControl();
-	virtual void CanBlend();
-	virtual void call_70();
-	virtual void ChangeOwner(uint8_t peer, bool force);
-	virtual void NeedsReassigning();
-	virtual void CalcReassignPriority();
-	virtual void call_80();
-	virtual void PeerHasLeft();
-	virtual void CleanUpGameObject(bool bDestroyObject);
-	virtual void PrepareForCloning();
-	virtual void PrepareForClone();
-	virtual bool CreateClone(CMessageBuffer* message);
-	virtual void GetTotalSizeOfCreateData();
-	virtual void InitialiseSyncStates();
-	virtual void GetChangedStates();
-	virtual uint32_t* GetCreateSyncState(uint32_t* part_to_process, CNetworkObject* netObj, uint8_t peer);
-	virtual void GetUnusedSyncStates();
-	virtual void GetUnackedSyncStates();
-	virtual void PrepareSync();
-	virtual CNetworkObject* Sync(uint32_t* processedParts, CNetworkObject* netObj, uint32_t parts_to_process, CMessageBuffer* message, SyncType type, uint8_t our_peer, bool unused);
-	virtual void PrepareSyncMigrate();
-	virtual void SyncMigrate();
-	virtual void IsInScope();
-	virtual void call_C4();
-	virtual void call_C8();
-	virtual void GetTotalSizeOfSyncData();
-	virtual void WriteCreateToLogFile();
-	virtual void call_D4();
-	virtual void WriteSyncMigrateToLogFile();
-	virtual void DumpNetworkObjectInfo();
-	virtual void InitaliseDeltaBuffer();
-	virtual void GetDeltaBufferSize();
-	virtual void ManageDefaultUpdateLevel();
-	virtual void GetImportantSyncStates();
-	virtual void call_F0();
-	virtual void call_F4();
-	virtual void IsOnGround();
-	virtual void DisplayNetworkInfo();
-	virtual bool TryToPassControlProximity(CNetworkPeer* to);
 
 	CNetworkPeer* GetPeerOwner()
 	{
@@ -807,40 +668,9 @@ public:
 		return m_NetID;
 	}
 
-	bool IsPlayer()
-	{
-		return m_Type == NET_OBJ_TYPE_PLAYER;
-	}
-
 	bool IsGlobalFlagSet(int flag)
 	{
 		return (m_global_flag & flag) != 0;
-	}
-
-	int GetOwnershipToken()
-	{
-		return m_ownershipToken;
-	}
-
-	int GetNextOwnershipToken()
-	{
-		for (int i = 0; i < 31; i++)
-		{
-			if ((i << 27) - (m_ownershipToken << 27) > 0)
-				return i;
-		}
-
-		return 0;
-	}
-
-	void SetBeenCloned(uint8_t peer, bool set)
-	{
-		((void(*)(CNetworkObject*, uint8_t, bool))0x82702CF0)(this, peer, set);
-	}
-
-	void SetPendingCloning(uint8_t peer, bool set)
-	{
-		((void(*)(CNetworkObject*, uint8_t, bool))0x82702D60)(this, peer, set);
 	}
 
 	eNetworkObjectType GetObjectType()
@@ -923,41 +753,6 @@ public:
 	{
 		return ((CPlayerInfo*(*)(CNetworkPeer*))0x827087D8)(this);
 	}
-
-	uint64_t GetRlPeerId()
-	{
-		if (CPlayerInfo* info = GetGamerInfo())
-			return info->m_RlPeerID;
-
-		return NULL;
-	}
-
-	uint64_t GetGamerId()
-	{
-		if (CPlayerInfo* info = GetGamerInfo())
-			return info->m_GamerID;
-
-		return NULL;
-	}
-};
-
-enum eAckCode : int
-{
-	ACKCODE_SUCCESS,
-	ACKCODE_FAIL,
-	ACKCODE_WRONG_OWNER,
-	ACKCODE_NO_OBJECT,
-	ACKCODE_TOO_MANY_OBJECTS,
-	ACKCODE_NONE
-};
-
-class CNetObjParser
-{
-public:
-	static bool ParseCreateClone(eNetworkObjectType type, bool isMissionObject, CMessageBuffer* message)
-	{
-		return ((bool(*)(int, eNetworkObjectType, bool, CMessageBuffer*))0x827920D8)(NULL, type, isMissionObject, message);
-	}
 };
 
 class CNetworkObjectMgr
@@ -972,34 +767,9 @@ public:
 		return ((CNetworkObject*(*)(CNetworkObjectMgr*, short, bool))0x826ED600)(this, objectID, includeAll);
 	}
 
-	void AddCreateAck(uint8_t peer, short net_id, eAckCode ack)
-	{
-		((void(*)(CNetworkObjectMgr*, uint8_t, short, eAckCode))0x826F1468)(this, peer, net_id, ack);
-	}
-
 	static const char* GetObjectTypeName(eNetworkObjectType type, bool isMissionObject)
 	{
 		return ((const char*(*)(eNetworkObjectType, bool))0x82702468)(type, isMissionObject);
-	}
-
-	bool ChangeOwner(CNetworkObject* obj, CNetworkPeer* player, bool force)
-	{
-		return ((bool(*)(CNetworkObjectMgr*, CNetworkObject*, CNetworkPeer*, bool))0x826F3668)(this, obj, player, force);
-	}
-
-	void AddRemove(uint8_t peer, short objectID, int ownershipToken)
-	{
-		((void(*)(CNetworkObjectMgr*, uint8_t, short, int))0x826F1570)(this, peer, objectID, ownershipToken);
-	}
-
-	bool RemoveClone(CNetworkObject* obj, uint8_t peer, bool force)
-	{
-		return ((bool(*)(CNetworkObjectMgr*, CNetworkObject*, uint8_t, bool))0x826F2640)(this, obj, peer, force);
-	}
-
-	void UnregisterNetworkObject(CNetworkObject* obj, bool force, bool destroyObject)
-	{
-		((void(*)(CNetworkObjectMgr*, CNetworkObject*, bool, bool))0x826EF7D8)(this, obj, force, destroyObject);
 	}
 
 	void ProcessCloneCreateData(uint8_t peer, eNetworkObjectType objectType, short objectID, uint8_t objectFlags, CMessageBuffer* message)
@@ -1007,6 +777,7 @@ public:
 		((void(*)(CNetworkObjectMgr*, uint8_t, eNetworkObjectType, short, uint8_t, CMessageBuffer*))0x826F1670)(this, peer, objectType, objectID, objectFlags, message);
 	}
 };
+extern CNetworkObjectMgr& ms_objectMgr;
 
 enum NetGameEventTypes : int
 {
@@ -1058,52 +829,9 @@ public:
 	short _0x18;
 	short _padding1;
 
-	virtual void deallocate();
+	virtual void dtor();
 	virtual const char* GetEventName();
-	virtual bool call3();
-	virtual bool call4();
-	virtual bool IsInScope(CNetworkPeer* peer);
-	virtual bool TimeToResend(uint32_t time);
-	virtual void Prepare(CMessageBuffer* message);
-	virtual void Handle(CMessageBuffer* message, int peer);
-	virtual bool Decide();
-	virtual void PrepareReply(CMessageBuffer* message);
-	virtual void HandleReply(CMessageBuffer* message);
-	virtual void PrepareExtraData(CMessageBuffer* message, bool has_extra_data); //has_extra_data is always true
-	virtual bool HandleExtraData(CMessageBuffer* message, bool has_extra_data);
-	virtual void call14();
-	virtual void call15();
-	virtual void CleanUp();
-	virtual void call17();
-	virtual void call18();
-	virtual void call19();
-	virtual void call20();
-	virtual void call21();
-	virtual bool call22();
-	virtual void call23();
-	virtual void call24();
 }; static_assert(sizeof(CNetworkEvent) == 0x1C, "sizeof CNetworkEvent is incorrect!");
-
-class CNetworkEventMgr
-{
-public:
-	int _0x00;
-
-	void CheckForSpaceInPool(bool createSpace)
-	{
-		((void(*)(CNetworkEventMgr*, bool))0x826DFFE8)(this, createSpace);
-	}
-
-	CNetworkEvent* GetOpenPoolSlot()
-	{
-		return ((CNetworkEvent*(*)(uint32_t))0x8244C388)(*reinterpret_cast<uint32_t*>(0x8318EDFC));
-	}
-
-	void PrepareEvent(CNetworkEvent* _event)
-	{
-		((void(*)(CNetworkEventMgr*, CNetworkEvent*))0x826DFA28)(this, _event);
-	}
-};
 
 struct netEvent
 {
@@ -1111,109 +839,66 @@ struct netEvent
 	int m_CxnId;
 };
 
-class CDynamicPickupsArrayHandler;
-class CNetworkArrayMgr
+class CWorld
 {
 public:
-	int _0x00;
-
-	CDynamicPickupsArrayHandler* GetDynamicPickupsArrayHandler()
-	{
-		return ((CDynamicPickupsArrayHandler*(*)(CNetworkArrayMgr*))0x826DA230)(this);
-	}
-};
-
-class netPeerComplainer
-{
-public:
-	struct netComplaintMsg
-	{
-		uint64_t m_ComplainerId;
-		uint64_t m_ComplaineeIds[64];
-		int m_NumComplainees;
-	};
-
-	uint64_t m_MyPeerId;
-	uint64_t m_ServerEndpointId;
-	uint32_t m_pCxnMgr;
-	char _0x14[0xA4C];
-	int m_ChannelId;
-
-	void SendComplaintMessage(netComplaintMsg* msg)
-	{
-		((void(*)(uint32_t, uint64_t*, int, netComplaintMsg*))0x829EC808)(m_pCxnMgr, &m_ServerEndpointId, m_ChannelId, msg);
-	}
-};
-
-class snSession
-{
-public:
-	struct snMsgRemoveGamersFromSessionCmd
-	{
-		uint64_t m_SessionId;
-		uint64_t m_GamerIds[32];
-		int m_NumGamers;
-	};
-
-	int _0x00;
-
-	void RemoveGamersFromSession(snMsgRemoveGamersFromSessionCmd* cmd)
-	{
-		((void(*)(snSession*, snMsgRemoveGamersFromSessionCmd*, void*))0x827CE278)(this, cmd, nullptr);
-	}
-
-	uint64_t GetSessionID()
-	{
-		return ((uint64_t(*)(snSession*))0x827C9A00)(this);
-	}
-};
-
-#define NETWORK_INTERFACE 0x83109C88
-class CNetwork
-{
-public:
-	static CNetworkObjectMgr* GetObjectManager() { return reinterpret_cast<CNetworkObjectMgr*>(0x8310CFFC); }
-	static CNetworkArrayMgr* GetArrayMgr() { return reinterpret_cast<CNetworkArrayMgr*>(0x831D6930); }
+	static int FindSlotForNewPlayer() { return ((int(*)())0x822636F0)(); }
 	static CPlayerInfo* GetPlayerInfo(int index) { return (reinterpret_cast<CPlayerInfo**>(0x82C01C70))[index]; }
-	static CNetworkPeer* GetMyPeer() { return ((CNetworkPeer*(*)(uint32_t))0x826FDD68)(NETWORK_INTERFACE); }
-	static bool IsGameInProgress() { return ((bool(*)())0x826C4CA8)(); }
-	static CPlayerPed* GetMyPeerPed()
+	static int GetMainPlayer() { return *reinterpret_cast<int*>(0x82A98778); }
+	static CPlayerInfo* GetMainPlayerInfo() 
 	{
-		CPlayerInfo* info = GetPlayerInfo(GetMyPeer()->GetPeerID());
-		return info ? info->GetPlayerPed() : nullptr;
-	}
-	static CNetworkPeer* GetPeerFromPeerId(int index) { return ((CNetworkPeer*(*)(uint32_t, int))0x826FE880)(NETWORK_INTERFACE, index); }
-	static CPlayerInfo* GetMyPeerPlayerInfo() { return GetPlayerInfo(GetMyPeer()->GetPeerID()); }
-	static CPlayerInfo* GetPlayerInfoByRlPeerID(uint64_t peerId)
-	{
-		for (int i = 0; i < 16; i++)
-		{
-			CNetworkPeer* player = GetPeerFromPeerId(i);
-			if (player && player->IsValid())
-			{
-				CPlayerInfo* info = player->GetGamerInfo();
-				if (info && info->m_RlPeerID == peerId)
-					return info;
-			}
-		}
+		int index = GetMainPlayer();
+		if (index != INVALID_PLAYER_INDEX)
+			return GetPlayerInfo(index);
 
 		return nullptr;
 	}
-	static CNetworkPeer* GetPeerFromConnectionId(void* base, int cxnId) { return ((CNetworkPeer*(*)(void*, int))0x826FE808)(base, cxnId); }
-	static CNetworkEventMgr* GetEventManager() { return reinterpret_cast<CNetworkEventMgr*>(0x830FC514); }
-	static netPeerComplainer* GetPeerComplainer() { return reinterpret_cast<netPeerComplainer*>(0x8315ECB0); }
-	static snSession* GetSession()
+	static CPlayerPed* GetMainPlayerPed()
 	{
-		snSession* session_1 = *reinterpret_cast<snSession**>(0x8315FAB8 + 0x58C8);
-		snSession* session_2 = *reinterpret_cast<snSession**>(0x8315FAB8 + 0x58C8);
-
-		if (session_1 && ((bool(*)(snSession*))0x827C98A8)(session_1))
-			return session_1;
-		else if (session_2 && ((bool(*)(snSession*))0x827C98A8)(session_2))
-			return session_2;
-
-		return reinterpret_cast<snSession*>(0x8315FAB8 + 8);
+		CPlayerInfo* info = GetMainPlayerInfo();
+		return info ? info->GetPlayerPed() : nullptr;
 	}
+};
+
+class CNetworkPeerMgr
+{
+public:
+	int _0x00;
+
+	CNetworkPeer* GetMyPeer() { return ((CNetworkPeer*(*)(CNetworkPeerMgr*))0x826FDD68)(this); }
+	CNetworkPeer* GetPeerFromPeerId(int index) { return ((CNetworkPeer*(*)(CNetworkPeerMgr*, int))0x826FE880)(this, index); }
+	CNetworkPeer* GetPeerFromConnectionId(int cxnId) { return ((CNetworkPeer*(*)(CNetworkPeerMgr*, int))0x826FE808)(this, cxnId); }
+};
+extern CNetworkPeerMgr& ms_PeerMgr;
+
+
+class CNetwork
+{
+public:
+	enum StateId : int
+	{
+		STATE_INITIAL,
+		STATE_HOSTING_SESSION,
+		STATE_JOINING_SESSION,
+		STATE_HOST_REJOINING_SESSION,
+		STATE_JOINING_RENDEZVOUS_SESSION,
+		STATE_HOSTED,
+		STATE_JOINED,
+		STATE_ENTERING_LOBBY,
+		STATE_IN_LOBBY,
+		STATE_STARTING,
+		STATE_IN_MATCH,
+		STATE_ENDING,
+		STATE_LEAVE,
+		STATE_LEAVING,
+		STATE_HANDLE_KICK,
+		STATE_HANDLING_KICK,
+		STATE_SHUTDOWN,
+		STATE_FAILED_TO_JOIN,
+		STATE_BAILING
+	};
+
+	static bool IsGameInProgress() { return ((bool(*)())0x826C4CA8)(); }
 };
 
 enum PED_MODELS : unsigned int

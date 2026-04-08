@@ -10,14 +10,14 @@ Detour<int> CNetObjPhysical_SyncAttach_detour;
 int CNetObjPhysical_SyncAttach(CNetworkObject* obj, SyncType type, CMessageBuffer* message) //Only runs with non peds
 {
 	int seek_bits = message->m_buffer.m_CursorPos + message->m_buffer.m_BaseBitOffset;
-	CNetworkObject* net_ped = CNetwork::GetMyPeerPed()->GetNetworkObject();
+	CNetworkObject* net_ped = CWorld::GetMainPlayerPed()->GetNetworkObject();
 
-	if (net_ped && type == SYNC_READ && obj->IsGlobalFlagSet(GLOBAL_FLAG_SCRIPT_OBJECT))
+	if (net_ped && type == SYNC_READ && obj->IsGlobalFlagSet(CNetworkObject::NETOBJGLOBALFLAG_SCRIPTOBJECT))
 	{
 		if (message->PeekBool(seek_bits)) //Check if obj is marked as attachment
 		{
 			uint16_t net_id = message->PeekShort(seek_bits + 1); //Read network id for what obj is being attached to
-			CNetworkObject* base = CNetwork::GetObjectManager()->GetNetworkObject(net_id);
+			CNetworkObject* base = ms_objectMgr.GetNetworkObject(net_id);
 			CNetworkPeer* owner = obj->GetPeerOwner();
 
 			if (net_id == net_ped->GetNetworkID()) //if network id is our network id we are being attached to
@@ -72,7 +72,7 @@ Detour<int> CNetObjPed_SyncPedAI_detour;
 int CNetObjPed_SyncPedAI(CNetworkObject* obj, SyncType type, CMessageBuffer* message)
 {
 	int seek_bits = message->m_buffer.m_CursorPos + message->m_buffer.m_BaseBitOffset;
-	if (type == SYNC_READ && obj->IsGlobalFlagSet(GLOBAL_FLAG_SCRIPT_OBJECT))
+	if (type == SYNC_READ && obj->IsGlobalFlagSet(CNetworkObject::NETOBJGLOBALFLAG_SCRIPTOBJECT))
 	{
 		int relationship_group = static_cast<int>(message->PeekInt(6, seek_bits));
 		if (relationship_group > 55 || relationship_group < 0)
@@ -148,7 +148,7 @@ int CNetObjPed_SyncGameState(CNetworkObject* obj, SyncType type, CMessageBuffer*
 			return CNetObjPed_SyncGameState_detour.CallOriginal(obj, SYNC_SKIP, message);
 		}
 
-		if (obj->IsGlobalFlagSet(GLOBAL_FLAG_SCRIPT_OBJECT))
+		if (obj->IsGlobalFlagSet(CNetworkObject::NETOBJGLOBALFLAG_SCRIPTOBJECT))
 		{
 			seek_bits += 6 + 1;
 			seek_bits += weapon_index == WEAPON_OBJECT ? 12 : 1;
@@ -174,14 +174,14 @@ Detour<int> CNetObjPed_SyncAttach_detour;
 int CNetObjPed_SyncAttach(CNetworkObject* obj, SyncType type, CMessageBuffer* message) //Only runs with peds
 {
 	int seek_bits = message->m_buffer.m_CursorPos + message->m_buffer.m_BaseBitOffset;
-	CNetworkObject* net_ped = CNetwork::GetMyPeerPed()->GetNetworkObject();
+	CNetworkObject* net_ped = CWorld::GetMainPlayerPed()->GetNetworkObject();
 
-	if (net_ped && type == SYNC_READ && obj->IsGlobalFlagSet(GLOBAL_FLAG_SCRIPT_OBJECT))
+	if (net_ped && type == SYNC_READ && obj->IsGlobalFlagSet(CNetworkObject::NETOBJGLOBALFLAG_SCRIPTOBJECT))
 	{
 		if (message->PeekBool(seek_bits)) //Check if ped is attaching to something
 		{
 			uint16_t net_id = message->PeekShort(seek_bits + 1); //Read network id for what obj is being attached to
-			CNetworkObject* base = CNetwork::GetObjectManager()->GetNetworkObject(net_id);
+			CNetworkObject* base = ms_objectMgr.GetNetworkObject(net_id);
 			CNetworkPeer* owner = obj->GetPeerOwner();
 
 			if (net_id == net_ped->GetNetworkID()) //if network id is our network id we are being attached to
@@ -217,13 +217,18 @@ int CNetObjPlayer_SyncPedAppearance(CNetworkObject* obj, SyncType type, CMessage
 		{
 			if (obj->GetPeerOwner()->IsValid())
 			{
-				CEntity* our_ent = CNetwork::GetMyPeerPed()->m_Vehicle ? CNetwork::GetMyPeerPed()->m_Vehicle : dynamic_cast<CEntity*>(CNetwork::GetMyPeerPed());
-				if (our_ent && obj->GetEntity())
+				CPlayerPed* main_ped = CWorld::GetMainPlayerPed();
+				if (main_ped)
 				{
-					GET_DISTANCE_BETWEEN_COORDS_3D(obj->GetEntity()->GetPosition()[0], obj->GetEntity()->GetPosition()[1], obj->GetEntity()->GetPosition()[2], our_ent->GetPosition()[0], our_ent->GetPosition()[1], our_ent->GetPosition()[2], &distance);
+					CEntity* our_ent = main_ped->m_Vehicle ? main_ped->m_Vehicle : dynamic_cast<CEntity*>(main_ped);
 
-					if (distance < 70.0f)
-						printf("[Player Apperance Data] - %s tried to set model to crash model! [0x%X]\n", obj->GetPeerOwner()->GetGamerInfo()->GetPlayerName(), model_hash);
+					if (our_ent && obj->GetEntity())
+					{
+						GET_DISTANCE_BETWEEN_COORDS_3D(obj->GetEntity()->GetPosition()[0], obj->GetEntity()->GetPosition()[1], obj->GetEntity()->GetPosition()[2], our_ent->GetPosition()[0], our_ent->GetPosition()[1], our_ent->GetPosition()[2], &distance);
+
+						if (distance < 70.0f)
+							printf("[Player Apperance Data] - %s tried to set model to crash model! [0x%X]\n", obj->GetPeerOwner()->GetGamerInfo()->GetPlayerName(), model_hash);
+					}
 				}
 			}
 

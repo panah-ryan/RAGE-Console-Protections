@@ -57,7 +57,7 @@ struct netComplaintMsg
 };
 
 extern Detour<void> CNetworkPeerMgr_HandleGetReadyToStartPlaying_detour;
-void CNetworkPeerMgr_HandleGetReadyToStartPlaying(void* netPeerMgr, netEvent* evt);
+void CNetworkPeerMgr_HandleGetReadyToStartPlaying(CNetworkPeerMgr* netPeerMgr, netEvent* evt);
 
 extern Detour<bool> CMsgPeerData_Import_detour;
 bool CMsgPeerData_Import(peerDataMsg* msg, uint32_t key, char* buffer, size_t size, int* count);

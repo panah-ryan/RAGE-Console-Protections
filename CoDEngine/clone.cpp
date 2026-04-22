@@ -194,7 +194,7 @@ void CNetworkObjectMgr_ProcessCloneCreateData(CNetworkObjectMgr* netObjMgr, uint
 			int player_index = static_cast<int>(message->PeekInt(5, seek_bits));
 			uint32_t model_hash = message->PeekInt(32, seek_bits + 5);
 
-			if (player_index > 16 || player_index < 0 || player_index == ms_PeerMgr.GetMyPeer()->GetPeerID()) //Invalid peer id
+			if (player_index > 15 || player_index < 0 || player_index == ms_PeerMgr.GetMyPeer()->GetPeerID()) //Invalid peer id
 			{
 				player_index = CWorld::FindSlotForNewPlayer(); //Just call original function game calls for getting slot when host
 
